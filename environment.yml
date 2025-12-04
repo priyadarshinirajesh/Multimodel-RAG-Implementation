@@ -1,0 +1,22 @@
+name: mmrag-cpu
+channels:
+  - conda-forge
+dependencies:
+  - python=3.10
+  - pip
+  - pip:
+      - pillow
+      - numpy>=1.23
+      - pandas
+      - tqdm
+      - pydicom
+      - opencv-python
+      - sentence-transformers
+      - transformers
+      - torch            # on conda-forge we'll use CPU wheel
+      - faiss-cpu
+      - scikit-learn
+      - requests
+      - datasets
+      - sentencepiece
+      - accelerate
