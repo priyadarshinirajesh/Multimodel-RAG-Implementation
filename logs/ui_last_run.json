@@ -73,9 +73,27 @@
       "impression": "1. Question of left lower lobe pneumonia and/or pleural effusion. 2. Borderline heart size with mild central vascular congestive changes.",
       "score": 0.332165390253067,
       "source": "image"
+    },
+    {
+      "filename": "C:/Users/priya/final_year_project/project_work/Multimodel-RAG-Implementation/data/raw/CT-MRI/Pancreas-CT/PANCREAS_0006/11-24-2015-PANCREAS0006-Pancreas-21398/Pancreas-67394/1-040.png",
+      "patient_id": 1147,
+      "modality": "CT",
+      "findings": "Mild pancreatic duct dilation noted. No focal masses identified.",
+      "impression": "No suspicious pancreatic masses.",
+      "score": 0.33211785554885864,
+      "source": "image"
+    },
+    {
+      "filename": "C:/Users/priya/final_year_project/project_work/Multimodel-RAG-Implementation/data/raw/dataset_indiana/images/images_normalized/3840_IM-1941-2001.dcm.png",
+      "patient_id": 3840,
+      "modality": "X-Ray",
+      "findings": "No acute osseous abnormality. Degenerative changes throughout the thoracic spine. Soft tissue structures are within normal limits. There is stable enlargement of the heart. Stable prominent mediastinal contours. Central vascular congestion. Mildly low lung volumes bilaterally. Bibasilar and left perihilar airspace opacities. XXXX bilateral pleural effusions. No pneumothorax.",
+      "impression": "1. Bilateral airspace disease. 2. Stable enlarged heart and prominent mediastinal contours.",
+      "score": 0.33139634132385254,
+      "source": "image"
     }
   ],
-  "reasoner_out": "**Final Answer:**\n\nBased on the evidence provided:\n\n1. **R1-R3**: These X-rays show no significant cardiomegaly; the heart appears normal in size and contour with no acute bony findings.\n\n2. **R4-6**: Similar to R1-R3, these results indicate no cardiomegaly or acute abnormalities.\n\n3. **R7**: A CT scan shows evidence of mild pancreatitis with glandular atrophy.\n\n4. **R8**: An X-ray reveals an opacity in the posterior aspect of the lower chest, likely indicating left lower lobe consolidation, along with possible small bilateral pleural effusion and mild central vascular congestion.\n\n**Conclusion:** The patient does not have significant cardiomegaly beyond what might be considered borderline enlargement observed initially. However, there are signs of mild abnormality in the lower lung zones, suggesting possible consolidation or associated fluid in the lungs. Further evaluation is recommended to assess for any underlying conditions such as chronic pancreatitis and interstitial lung disease affecting the lower lobes.\n\n**Final Answer:** The patient presents with no significant cardiomegaly beyond initial findings but shows signs of mild abnormality in the lower lung zones on X-ray, possibly indicating consolidation or associated fluid. Further investigation into potential interstitial lung involvement is recommended.",
+  "reasoner_output": "**Final Answer:**\n\nBased on the X-ray findings, the patient presents with an abnormal heart shadow and enlargement. However, upon closer examination of the retrieved evidence:\n\n1. **R1 and R2**: Show borderline cardiomegaly without acute findings.\n2. **R3 to R5**: Indicate no significant enlargement or acute abnormalities.\n3. **R6**: Confirms a stable chest appearance with no evidence of acute cardiopulmonary issues.\n4. **R8**: Suggests possible left lower lobe pneumonia or pleural effusion, alongside borderline heart size and mild congestion.\n5. **R10**: Clearly indicates bilateral airspace disease and pleural effusions, with central vascular congestion.\n\n**Conclusion:**\n\nThe most significant findings point to a diagnosis of **bilateral consolidation in the lower lung zones (lower lobes) with associated pleural effusions**, likely leading to **pneumonia or interstitial lung disease**. The enlargement may be non-threatening but warrants continued monitoring, especially if accompanied by symptoms.\n\n**Recommendation:**\nConduct further evaluation and consider imaging studies like CT or MRI for a definitive diagnosis.",
   "verification": [
     {
       "claim": "**Final Answer:**",
@@ -84,10 +102,16 @@
       "score": 0.10306821763515472
     },
     {
-      "claim": "Based on the evidence provided:",
+      "claim": "Based on the X-ray findings, the patient presents with an abnormal heart shadow and enlargement",
+      "verified": true,
+      "evidence_idx": 2,
+      "score": 0.6552666425704956
+    },
+    {
+      "claim": "However, upon closer examination of the retrieved evidence:",
       "verified": false,
-      "evidence_idx": 5,
-      "score": 0.14656001329421997
+      "evidence_idx": 7,
+      "score": 0.27205690741539
     },
     {
       "claim": "1",
@@ -96,10 +120,10 @@
       "score": 0.0752674788236618
     },
     {
-      "claim": "**R1-R3**: These X-rays show no significant cardiomegaly; the heart appears normal in size and contour with no acute bony findings",
+      "claim": "**R1 and R2**: Show borderline cardiomegaly without acute findings",
       "verified": true,
-      "evidence_idx": 2,
-      "score": 0.6344209313392639
+      "evidence_idx": 0,
+      "score": 0.7653679847717285
     },
     {
       "claim": "2",
@@ -108,10 +132,10 @@
       "score": 0.07306831330060959
     },
     {
-      "claim": "**R4-6**: Similar to R1-R3, these results indicate no cardiomegaly or acute abnormalities",
-      "verified": true,
-      "evidence_idx": 0,
-      "score": 0.5602405071258545
+      "claim": "**R3 to R5**: Indicate no significant enlargement or acute abnormalities",
+      "verified": false,
+      "evidence_idx": 2,
+      "score": 0.40497809648513794
     },
     {
       "claim": "3",
@@ -120,10 +144,10 @@
       "score": 0.09486610442399979
     },
     {
-      "claim": "**R7**: A CT scan shows evidence of mild pancreatitis with glandular atrophy",
+      "claim": "**R6**: Confirms a stable chest appearance with no evidence of acute cardiopulmonary issues",
       "verified": true,
-      "evidence_idx": 6,
-      "score": 0.8123100996017456
+      "evidence_idx": 5,
+      "score": 0.7695035934448242
     },
     {
       "claim": "4",
@@ -132,41 +156,52 @@
       "score": 0.04714144021272659
     },
     {
-      "claim": "**R8**: An X-ray reveals an opacity in the posterior aspect of the lower chest, likely indicating left lower lobe consolidation, along with possible small bilateral pleural effusion and mild central vascular congestion",
+      "claim": "**R8**: Suggests possible left lower lobe pneumonia or pleural effusion, alongside borderline heart size and mild congestion",
       "verified": true,
       "evidence_idx": 7,
-      "score": 0.8124808073043823
+      "score": 0.8279484510421753
     },
     {
-      "claim": "**Conclusion:** The patient does not have significant cardiomegaly beyond what might be considered borderline enlargement observed initially",
+      "claim": "5",
+      "verified": false,
+      "evidence_idx": 2,
+      "score": 0.0537705197930336
+    },
+    {
+      "claim": "**R10**: Clearly indicates bilateral airspace disease and pleural effusions, with central vascular congestion",
       "verified": true,
-      "evidence_idx": 0,
-      "score": 0.6900262832641602
+      "evidence_idx": 9,
+      "score": 0.6264259219169617
     },
     {
-      "claim": "However, there are signs of mild abnormality in the lower lung zones, suggesting possible consolidation or associated fluid in the lungs",
+      "claim": "**Conclusion:**",
+      "verified": false,
+      "evidence_idx": 8,
+      "score": 0.15354357659816742
+    },
+    {
+      "claim": "The most significant findings point to a diagnosis of **bilateral consolidation in the lower lung zones (lower lobes) with associated pleural effusions**, likely leading to **pneumonia or interstitial lung disease**",
       "verified": true,
-      "evidence_idx": 5,
-      "score": 0.5710078477859497
+      "evidence_idx": 7,
+      "score": 0.6612523198127747
     },
     {
-      "claim": "Further evaluation is recommended to assess for any underlying conditions such as chronic pancreatitis and interstitial lung disease affecting the lower lobes",
-      "verified": true,
-      "evidence_idx": 6,
-      "score": 0.5510650873184204
-    },
-    {
-      "claim": "**Final Answer:** The patient presents with no significant cardiomegaly beyond initial findings but shows signs of mild abnormality in the lower lung zones on X-ray, possibly indicating consolidation or associated fluid",
+      "claim": "The enlargement may be non-threatening but warrants continued monitoring, especially if accompanied by symptoms",
       "verified": true,
       "evidence_idx": 2,
-      "score": 0.6260212063789368
+      "score": 0.45532548427581787
     },
     {
-      "claim": "Further investigation into potential interstitial lung involvement is recommended",
+      "claim": "**Recommendation:**",
+      "verified": false,
+      "evidence_idx": 2,
+      "score": 0.052701499313116074
+    },
+    {
+      "claim": "Conduct further evaluation and consider imaging studies like CT or MRI for a definitive diagnosis",
       "verified": true,
       "evidence_idx": 7,
-      "score": 0.487031489610672
+      "score": 0.48647087812423706
     }
-  ],
-  "time_seconds": 51.69415044784546
+  ]
 }
