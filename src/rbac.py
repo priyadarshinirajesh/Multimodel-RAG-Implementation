@@ -14,32 +14,32 @@ def apply_rbac(role, retrieved_rows):
 
         elif role == "nurse":
             filtered.append({
-                "filename": r["filename"],
-                "impression": r["impression"],  
-                "modality": r["modality"],
-                "patient_id": r["patient_id"],
+                "filename": r.get("filename"),
+                "impression": r.get("impression"),  
+                "modality": r.get("modality"),
+                "patient_id": r.get("patient_id"),
             })
 
         elif role == "patient":
             filtered.append({
-                "filename": r["filename"],
-                "explanation": simplify_text(r["impression"]),
+                "filename": r.get("filename"),
+                "explanation": simplify_text(r.get("impression","")),
             })
 
         elif role == "admin":
             filtered.append({
-                "filename": r["filename"],
-                "metadata": f"{r['modality']} | {r['filename']}"
+                "filename": r.get("filename"),
+                "metadata": f"{r.get('modality')} | {r.get('filename')}"
             })
 
     return filtered
-
 
 def simplify_text(text):
     """
     Basic linguistic simplification for patient-friendly explanation.
     """
-    import re
+    if text is None:
+        return ""
     text = text.replace("cardiomegaly", "enlarged heart")
     text = text.replace("opacity", "shadow in the lung")
     text = text.replace("effusion", "fluid build-up")
