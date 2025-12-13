@@ -15,7 +15,7 @@ from verifier import run_verification
 
 st.set_page_config(page_title="Medical Agentic RAG", layout="wide")
 
-st.title("🩺 Medical Agentic RAG System (DeepSeek-R1 + Retrieval + Verification)")
+st.title("🩺 Medical Agentic RAG System ")
 
 query = st.text_input("Enter medical query:")
 role = st.selectbox("Select role:", ["doctor", "nurse", "patient", "admin"])
@@ -57,7 +57,7 @@ def launch_retrieval_in_terminal(query_text, role_text):
 
 if run_button and query.strip():
 
-    st.info("Running retrieval (hidden) and generating reasoner answer...")
+    st.info("Running retrieval and generating reasoner answer...")
 
     # Option A (default): run retrieval inside the Streamlit process (silent).
     #   We call orchestrate(...) but we do NOT display the retrieved items.
@@ -88,7 +88,7 @@ if run_button and query.strip():
             reason_output = None
 
     if reason_output:
-        st.subheader("🧠 Reasoner Output (DeepSeek-R1)")
+        st.subheader("🧠 Output (DeepSeek-R1)")
         # Display the text with nicer formatting
         st.markdown(reason_output)
 
