@@ -1,46 +1,93 @@
 # src/orchestrator.py
 from tools.retrieval import retrieve_text, retrieve_image
 from rbac import apply_rbac
+import pandas as pd
+import os
 
-def orchestrate(query, role="doctor", top_k_text=5, top_k_img=5):
-    """
-    1) Use retrieval tools
-    2) Apply RBAC filtering
-    3) Return structured dict for reasoner
-    """
+ROOT = os.path.abspath(os.path.join(os.path.dirname(__file__), ".."))
+META = os.path.join(ROOT, "data", "raw", "final_multimodal_dataset.csv")
+meta = pd.read_csv(META)
+
+
+def orchestrate(query, role="doctor", patient_id=None, top_k_text=5, top_k_img=5):
+
+    print("\n================ ORCHESTRATOR DEBUG ================")
+    print(f"Incoming Query: {query}")
+    print(f"Role: {role}")
+    print(f"Patient ID: {patient_id}")
+    print(f"CSV Loaded: {META}")
+
+    # ----------------------------------------------------
+    # STEP 1: Always retrieve patient’s OWN records first
+    # ----------------------------------------------------
+    if patient_id is not None:
+        patient_records = meta[meta["patient_id"] == int(patient_id)]
+        patient_records_list = patient_records.to_dict("records")
+
+        print(f"\n-- Direct patient records found in CSV: {len(patient_records_list)} --")
+    else:
+        patient_records_list = []
+
+    # ----------------------------------------------------
+    # STEP 2: Run vector similarity retrieval (global)
+    # ----------------------------------------------------
     text_hits = retrieve_text(query, k=top_k_text)
     img_hits = retrieve_image(query, k=top_k_img)
 
+    print("\n-- Text hits returned by retriever --")
+    for h in text_hits: print(h)
+
+    print("\n-- Image hits returned by retriever --")
+    for h in img_hits: print(h)
+
+    # ----------------------------------------------------
+    # STEP 3: Combine → but *patient records always come first*
+    # ----------------------------------------------------
     retrieved = []
 
-    # include text items first (findings + impression)
-    for t in text_hits:
+    # Add patient rows FIRST
+    for row in patient_records_list:
+        retrieved.append({
+            "filename": row["filename"],
+            "patient_id": row["patient_id"],
+            "modality": row["modality"],
+            "findings": row.get("findings", ""),
+            "impression": row.get("impression", ""),
+            "score": 1.0,  # highest priority
+            "source": "patient_record"
+        })
+
+    # Add vector‑retrieved rows (but skip if wrong patient)
+    for t in text_hits + img_hits:
+        if patient_id is not None and int(t["patient_id"]) != int(patient_id):
+            continue
+
         retrieved.append({
             "filename": t["filename"],
             "patient_id": t["patient_id"],
-            "modality": t["modality"],
-            "findings": t.get("findings",""),
-            "impression": t.get("impression",""),
-            "score": t["score"],
-            "source": "text"
+            "modality": t.get("modality", ""),
+            "findings": t.get("findings", ""),
+            "impression": t.get("impression", ""),
+            "score": t.get("score", 0),
+            "source": "vector_hit"
         })
 
-    # include image items
-    for it in img_hits:
-        retrieved.append({
-            "filename": it["filename"],
-            "patient_id": it["patient_id"],
-            "modality": it["modality"],
-            "findings": it.get("findings",""),
-            "impression": it.get("impression",""),
-            "score": it["score"],
-            "source": "image"
-        })
+    print("\n-- Retrieved AFTER patient_id filtering --")
+    for r in retrieved: print(r)
 
-    # apply RBAC
+    # ----------------------------------------------------
+    # STEP 4: Apply RBAC
+    # ----------------------------------------------------
     filtered = apply_rbac(role, retrieved)
 
-    return {"query": query, "role": role, "retrieved": filtered}
+    print("\n-- Retrieved AFTER RBAC --")
+    for r in filtered: print(r)
 
-if __name__ == "__main__":
-    print(orchestrate("enlarged heart", role="doctor"))
+    print("=====================================================\n")
+
+    return {
+        "query": query,
+        "role": role,
+        "patient_id": patient_id,
+        "retrieved": filtered
+    }

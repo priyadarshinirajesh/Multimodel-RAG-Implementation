@@ -8,6 +8,7 @@ from transformers import AutoTokenizer, AutoModel, CLIPTokenizer, CLIPModel
 
 from rbac import apply_rbac   # <-- IMPORT RBAC HERE
 
+
 # ------------------------------------------------------------
 # CONFIG
 # ------------------------------------------------------------

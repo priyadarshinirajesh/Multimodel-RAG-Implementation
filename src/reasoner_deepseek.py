@@ -1,76 +1,72 @@
 # src/reasoner_deepseek.py
+import os
 import requests
 import json
-import time
-import subprocess
 import psutil
-import os
+import subprocess
+import time
 
 OLLAMA_URL = "http://localhost:11434/api/generate"
 BATCH_SCRIPT = os.path.abspath("start_ollama.bat")
 
 def is_ollama_running():
-    """Check if Ollama server process is alive."""
-    for proc in psutil.process_iter(attrs=['name']):
-        if proc.info['name'] and "ollama" in proc.info['name'].lower():
+    for p in psutil.process_iter(attrs=["name"]):
+        if "ollama" in (p.info["name"] or "").lower():
             return True
     return False
 
 def ensure_ollama_running():
-    """Ensure Ollama server is running — else auto-start it."""
     if is_ollama_running():
-        print("✅ Ollama is already running.")
+        print("✅ Ollama already running.")
         return
-
-    print("⚠️ Ollama is NOT running. Starting it now...")
+    print("⚠️ Ollama not running → Starting…")
     subprocess.Popen([BATCH_SCRIPT], shell=True)
 
-    # Wait until server responds
     for _ in range(20):
         try:
             r = requests.get(OLLAMA_URL, timeout=2)
             if r.status_code == 200:
-                print("✅ Ollama server is now running!")
+                print("✅ Ollama started!")
                 return
         except:
             pass
-        print("⏳ Waiting for Ollama to start...")
         time.sleep(1)
-
-    raise RuntimeError("❌ Ollama did not start. Please start it manually.")
+    raise RuntimeError("❌ Ollama failed to start.")
 
 def deepseek_reason(query, retrieved):
     ensure_ollama_running()
 
     # Build evidence
-    evidence_lines = []
-    for i, item in enumerate(retrieved):
-        eid = f"R{i+1}"
-        evidence_lines.append(
-            f"{eid} | modality: {item.get('modality')} | findings: {item.get('findings','')} | impression: {item.get('impression','')}"
+    print("\n================ DEEPSEEK DEBUG ================")
+    print("User Query:", query)
+
+    evidence = []
+    for idx, item in enumerate(retrieved):
+        print(f"[EVIDENCE {idx+1}] {item}")
+        evidence.append(
+            f"R{idx+1}: modality={item.get('modality')} findings={item.get('findings','')} impression={item.get('impression','')}"
         )
-    evidence_text = "\n".join(evidence_lines)
+
+    evidence_text = "\n".join(evidence)
 
     prompt = f"""
-You are a medical reasoning agent. Use ONLY the retrieved evidence below.
+You are a medical reasoning agent.
+Use ONLY the retrieved evidence below.
 
-Retrieved evidence:
+Retrieved Evidence:
 {evidence_text}
 
-User query:
+User Question:
 {query}
 
-Task:
-1. Provide step-by-step reasoning with citations like [R1], [R2].
-2. Give a final conclusion labelled "Final Answer:".
+Provide step-by-step reasoning using citations [R1], [R2] and a final answer.
 """
 
-    payload = {
-        "model": "deepseek-r1:7b",
-        "prompt": prompt,
-        "stream": False
-    }
+    print("\n--- FINAL PROMPT SENT TO DEEPSEEK ---")
+    print(prompt)
+    print("=====================================================")
 
+    payload = {"model": "deepseek-r1:7b", "prompt": prompt, "stream": False}
     response = requests.post(OLLAMA_URL, json=payload)
-    result = response.json()["response"]
-    return result
+
+    return response.json()["response"]

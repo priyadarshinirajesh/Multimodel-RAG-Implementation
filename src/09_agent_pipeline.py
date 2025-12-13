@@ -7,9 +7,9 @@ from orchestrator import orchestrate
 from reasoner_deepseek import deepseek_reason
 from verifier import run_verification
 
-def run_pipeline(query, role="doctor", top_k_text=5, top_k_img=3, log_file="logs/last_run.json"):
+def run_pipeline(query, role="doctor", patient_id=None, top_k_text=5, top_k_img=3, log_file="logs/last_run.json"):
     # Orchestrate retrieval + RBAC
-    lead = orchestrate(query, role=role, top_k_text=top_k_text, top_k_img=top_k_img)
+    lead = orchestrate(query, role=role, patient_id=patient_id,top_k_text=top_k_text, top_k_img=top_k_img)
     retrieved = lead["retrieved"]
     print(f"Retrieved {len(retrieved)} items after RBAC.\n")
 
@@ -42,6 +42,7 @@ def run_pipeline(query, role="doctor", top_k_text=5, top_k_img=3, log_file="logs
     return result
 
 if __name__ == "__main__":
+    patient_id = input("Enter Patient ID: ").strip()
     q = input("Enter query: ").strip()
-    r = input("Enter role (doctor/nurse/patient/admin) [doctor]: ").strip() or "doctor"
-    run_pipeline(q, role=r)
+    r = input("Enter role (doctor/nurse/patient/admin): ").strip() or "doctor"
+    run_pipeline(q, role=r, patient_id=patient_id)

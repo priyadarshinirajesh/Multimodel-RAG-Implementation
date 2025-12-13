@@ -23,6 +23,14 @@ DEVICE = "cpu"
 # load meta
 meta = pd.read_csv(META)
 
+def normalize_path(path):
+    if isinstance(path, str):
+        # Replace backslashes → forward slashes
+        path = path.replace("\\", "/")
+    # Convert to absolute path so Streamlit can access it
+    return os.path.abspath(path)
+
+
 # pooling helper
 def mean_pooling(model_output, attention_mask):
     token_embeddings = model_output.last_hidden_state
@@ -109,7 +117,7 @@ def retrieve_text(query, k=5):
         row = meta[meta["filename"] == fname]
         if not row.empty:
             results.append({
-                "filename": fname,
+                "filename": normalize_path(fname),
                 "patient_id": int(row["patient_id"].values[0]) if "patient_id" in row.columns else None,
                 "modality": row["modality"].values[0] if "modality" in row.columns else None,
                 "findings": row.iloc[0].get("findings", ""),
@@ -130,7 +138,7 @@ def retrieve_image(query, k=5):
         row = meta[meta["filename"] == fname]
         if not row.empty:
             results.append({
-                "filename": fname,
+                "filename": normalize_path(fname),
                 "patient_id": int(row["patient_id"].values[0]) if "patient_id" in row.columns else None,
                 "modality": row["modality"].values[0] if "modality" in row.columns else None,
                 "findings": row.iloc[0].get("findings", ""),
