@@ -1,43 +1,49 @@
 # src/evaluation.py
-from rouge import Rouge
-from nltk.translate.bleu_score import sentence_bleu
+from sentence_transformers import SentenceTransformer, util
+import numpy as np
 
-def safe_text(t):
-    return t.strip() if isinstance(t, str) else ""
+model = SentenceTransformer("sentence-transformers/all-mpnet-base-v2")
 
-def evaluate_all(reference, prediction, retrieved):
-    print("\n================ EVALUATION DEBUG ================")
-    print("REFERENCE TEXT:", reference)
-    print("PREDICTION TEXT:", prediction)
+# --------------------------
+# 1. Semantic similarity
+# --------------------------
+def semantic_similarity(pred, gt):
+    if not gt.strip():
+        return 0.0
+    emb_pred = model.encode(pred, convert_to_tensor=True)
+    emb_gt = model.encode(gt, convert_to_tensor=True)
+    return float(util.cos_sim(emb_pred, emb_gt))
 
-    if not reference:
-        print("⚠ No reference → BLEU / ROUGE skipped.")
-        ref_tokens = []
-    else:
-        ref_tokens = reference.split()
+# --------------------------
+# 2. Faithfulness Score
+# --------------------------
+def faithfulness_score(pred, retrieved):
+    """Checks if model output is grounded in retrieved evidence."""
+    if not retrieved:
+        return 0.0
 
-    # BLEU
-    bleu = 0.0
-    try:
-        bleu = sentence_bleu([ref_tokens], prediction.split()) if ref_tokens else 0.0
-    except:
-        bleu = 0.0
+    evidences = []
+    for r in retrieved:
+        f = r.get("findings", "")
+        imp = r.get("impression", "")
+        if f: evidences.append(f)
+        if imp: evidences.append(imp)
 
-    print(f"BLEU: {bleu:.4f}")
+    if not evidences:
+        return 0.0
 
-    # ROUGE-L
-    rouge_l = 0.0
-    if reference:
-        try:
-            r = Rouge()
-            rouge_l = r.get_scores(prediction, reference)[0]["rouge-l"]["f"]
-        except:
-            rouge_l = 0.0
-    print(f"ROUGE-L: {rouge_l:.4f}")
+    emb_pred = model.encode(pred, convert_to_tensor=True)
+    evidence_emb = model.encode(evidences, convert_to_tensor=True)
 
-    # Recall@K
-    gold = safe_text(reference).lower()
-    rec1 = any(gold in (item.get("findings","")+item.get("impression","")).lower() for item in retrieved)
-    print(f"Recall@1: {1.0 if rec1 else 0.0}")
+    sims = util.cos_sim(emb_pred, evidence_emb)[0]  
+    return float(sims.mean())
 
-    print("=====================================================\n")
+# --------------------------
+# 3. Evaluate main function
+# --------------------------
+def evaluate(prediction, retrieved, ground_truth):
+    return {
+        "semantic_similarity": semantic_similarity(prediction, ground_truth),
+        "faithfulness": faithfulness_score(prediction, retrieved),
+        "retrieval_count": len(retrieved)
+    }

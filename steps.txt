@@ -7,4 +7,4 @@
 7. python src/03_make_text_embeddings.py
 8. python src/04_build_faiss_text.py
 9. python src/05_retrieve.py
-10. streamlit run app/streamlit_app.py
+10. streamlit run streamlit_app.py
