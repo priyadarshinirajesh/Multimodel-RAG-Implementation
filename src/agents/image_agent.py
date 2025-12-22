@@ -1,6 +1,7 @@
 # src/agents/image_agent.py
 
-from tools.image_caption import clip_caption
+# from tools.image_caption import clip_caption
+from tools.image_caption import blip_caption
 
 
 class ImageAgent:
@@ -13,7 +14,8 @@ class ImageAgent:
             fname = item["filename"]
 
             if fname.lower().endswith((".png", ".jpg", ".jpeg")):
-                caption = clip_caption(fname)
+                #caption = clip_caption(fname)
+                caption = blip_caption(fname)
                 item["image_caption"] = caption
             else:
                 item["image_caption"] = ""

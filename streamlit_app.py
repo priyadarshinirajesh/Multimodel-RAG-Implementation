@@ -87,7 +87,8 @@ if st.button("Run Analysis"):
     st.write(f"**Semantic Similarity:** {metrics['semantic_similarity']:.4f}")
     st.write(f"**Faithfulness Score:** {metrics['faithfulness']:.4f}")
     st.write(f"**Retrieved Evidence Count:** {metrics['retrieval_count']}")
-
+    st.write(f"**Hallucination Rate:** {metrics['hallucination_rate']:.2f}")
+    
     # Same console debugging as your old RAG system
     print("\n===== EVALUATION METRICS =====")
     print(metrics)

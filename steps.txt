@@ -2,9 +2,18 @@
 2. conda activate mmrag-cpu
 3. pip install transformers==4.40.0 sentence-transformers==2.2.2 faiss-cpu tqdm pillow
 4. python combined_dataset.py
+
+for clip:
 5. python src/01_make_image_embeddings_clip.py
 6. python src/02_build_faiss_index.py
 7. python src/03_make_text_embeddings.py
 8. python src/04_build_faiss_text.py
 9. python src/05_retrieve.py
 10. streamlit run streamlit_app.py
+
+for flava:
+1. python src/01_make_image_embeddings_flava.py
+2. python src/02_build_faiss_index_image_flava.py
+3. python src/03_make_text_embeddings_flava.py
+4. python src/04_build_faiss_text_flava.py
+
