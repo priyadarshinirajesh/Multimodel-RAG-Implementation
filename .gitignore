@@ -2,3 +2,4 @@ data/raw/
 outputs/embeddings/
 outputs/faiss/
 models/
+.env
