@@ -27,6 +27,7 @@ class MMRAgState(TypedDict):
     # aggregation + reasoning
     evidence: List[Any]
     final_answer: str
+    metrics: dict
 
 def router_node(state):
     print("[INFO] [RouterNode] Routing modalities")
@@ -82,12 +83,17 @@ def aggregation_node(state):
 
 def reasoning_node(state):
     print("[INFO] [ReasoningNode] Invoking DeepSeek with multimodal evidence")
+
+    result = clinical_reasoning_agent(
+        state["query"],
+        state["evidence"]
+    )
+
     return {
-        "final_answer": clinical_reasoning_agent(
-            state["query"],
-            state["evidence"]
-        )
+        "final_answer": result["final_answer"],
+        "metrics": result["metrics"]
     }
+
 
 
 def build_mmrag_graph():

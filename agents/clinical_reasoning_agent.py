@@ -1,12 +1,17 @@
 # agents/clinical_reasoning_agent.py
 
-# agents/clinical_reasoning_agent.py
-
 import os
 import requests
 import psutil
 import subprocess
 import time
+from evaluation.diagnosis_evaluator import (
+    precision_recall_mrr,
+    #role_compliance,
+    groundedness,
+    clinical_correctness,
+    completeness
+)
 
 OLLAMA_URL = "http://localhost:11434/api/generate"
 
@@ -49,6 +54,12 @@ def clinical_reasoning_agent(query: str, evidence: list):
     logger.info("Starting clinical reasoning")
     logger.info(f"Evidence items received: {len(evidence)}")
 
+    ground_truth_impressions = [
+        e["report_text"]
+        for e in evidence
+        if "impression" in e["report_text"].lower()
+    ]
+
     ensure_ollama_running()
     #logger.info("Extracting image insights using PaliGemma")
     image_insights = image_insight_agent_ollama(evidence)
@@ -64,11 +75,16 @@ def clinical_reasoning_agent(query: str, evidence: list):
     prompt = f"""
 You are a clinical decision-support AI.
 
-Rules:
-- Use ONLY the provided evidence
-- Do NOT hallucinate diagnoses
-- If evidence is insufficient, say so clearly
-- Cite evidence as [R1], [R2], [R1-IMAGE], etc.
+ABSOLUTE RULES (MANDATORY):
+- Use ONLY the evidence provided below.
+- DO NOT infer, assume, or diagnose beyond evidence.
+- EVERY factual sentence MUST end with a citation.
+- If evidence is insufficient, explicitly write: "Insufficient evidence [Rx]".
+
+EVIDENCE USAGE RULES:
+- Prefer text reports over image descriptions when both exist.
+- Image insights are SUPPORTING only, not primary diagnostic proof.
+- Ignore modalities that are clinically irrelevant to the question.
 
 Retrieved Clinical Evidence:
 {chr(10).join(combined_evidence)}
@@ -76,10 +92,27 @@ Retrieved Clinical Evidence:
 Clinical Question:
 {query}
 
-Provide:
-1. Step-by-step reasoning
-2. Final concise answer
+Respond in EXACTLY this structure and NOTHING else:
+
+Diagnosis / Impression:
+- One short sentence ONLY (max 20 words), ending with citation.
+
+Supporting Evidence:
+- 2–4 bullet points
+- Each bullet ≤ 15 words
+- Each bullet MUST end with citation
+
+Next Steps / Recommendations:
+- 1–2 bullets
+- Use neutral language (e.g., "consider", "may be warranted")
+- If none, write: "No further action required."
+
+IMPORTANT:
+- DO NOT mention unrelated organs.
+- DO NOT repeat evidence verbatim.
+- DO NOT include explanations outside the structure.
 """
+
     print("---------FINAL PROMPT ---------")
     print(prompt)
     print("-------------------------------")
@@ -93,5 +126,34 @@ Provide:
     response.raise_for_status()
 
     logger.info("Clinical reasoning completed")
-    return response.json()["response"]
+    final_answer = response.json()["response"]
+
+    # -------------------------------
+    # Evaluation Metrics
+    # -------------------------------
+
+    retrieved_texts = [e["report_text"] for e in evidence]
+
+    metrics = {}
+
+    metrics.update(
+        precision_recall_mrr(
+            retrieved=retrieved_texts,
+            ground_truth=ground_truth_impressions,
+            k=7
+        )
+    )
+
+    #metrics["RoleCompliance"] = role_compliance(final_answer)
+    metrics["Groundedness"] = groundedness(final_answer)
+    metrics["ClinicalCorrectness"] = clinical_correctness(
+        final_answer, ground_truth_impressions
+    )
+    metrics["Completeness"] = completeness(final_answer)
+
+    return {
+        "final_answer": final_answer,
+        "metrics": metrics
+    }
+
 

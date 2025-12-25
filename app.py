@@ -23,7 +23,8 @@ def main():
         "ct_results": [],
         "mri_results": [],
         "evidence": [],
-        "final_answer": ""
+        "final_answer": "",
+        "metrics": {}
     }
 
     final_state = graph.invoke(initial_state)
@@ -36,6 +37,12 @@ def main():
 
     print("\n🧠 FINAL CLINICAL RESPONSE:")
     print(final_state["final_answer"])
+
+    print("\n📊 EVALUATION METRICS")
+    print("=" * 40)
+    for k, v in final_state["metrics"].items():
+        print(f"{k}: {v}")
+    print("=" * 40)
 
 
 if __name__ == "__main__":

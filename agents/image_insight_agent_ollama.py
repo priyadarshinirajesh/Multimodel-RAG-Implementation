@@ -22,15 +22,21 @@ def image_insight_agent_ollama(evidence):
         image_b64 = encode_image(e["image_path"])
 
         prompt = """
-You are a medical imaging assistant.
+You are a medical image observation assistant.
 
-Instructions:
-- Describe ONLY visible anatomical structures
-- Mention observable abnormalities (size, shape, opacity, shadow)
-- Do NOT diagnose
-- Do NOT speculate causes
-- Be concise and factual
+TASK:
+Describe ONLY what is directly visible in this image.
+
+STRICT RULES:
+- DO NOT name diseases or diagnoses.
+- DO NOT guess organ unless visually obvious.
+- Use anatomical terms ONLY if clearly visible.
+- If a structure is unclear, write exactly: "Unclear from image."
+- Maximum 3 short sentences.
+- Each sentence ≤ 12 words.
+- NO speculation.
 """
+
 
         payload = {
             "model": "llava:7b",
