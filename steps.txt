@@ -1,19 +1,14 @@
 1. conda env create -f environment.yml
-2. conda activate mmrag-cpu
-3. pip install transformers==4.40.0 sentence-transformers==2.2.2 faiss-cpu tqdm pillow
-4. python combined_dataset.py
+2. conda activate mmrag-clinical
+3. pip install -r requirements.txt
+4. python -m ingestion.ingest_to_qdrant
+5.python -m tests.test_qdrant_basic
+6. python -m tests.test_patient_retrieval
 
-for clip:
-5. python src/01_make_image_embeddings_clip.py
-6. python src/02_build_faiss_index.py
-7. python src/03_make_text_embeddings.py
-8. python src/04_build_faiss_text.py
-9. python src/05_retrieve.py
-10. streamlit run streamlit_app.py
+also : conda activate llava-med 
+python -m llava.serve.controller --host 0.0.0.0 --port 10000
+python -m llava.serve.model_worker --controller http://localhost:10000 --host 0.0.0.0 --port 40000 --worker http://localhost:40000 --model-path microsoft/llava-med-v1.5-mistral-7b --multi-modal
 
-for flava:
-1. python src/01_make_image_embeddings_flava.py
-2. python src/02_build_faiss_index_image_flava.py
-3. python src/03_make_text_embeddings_flava.py
-4. python src/04_build_faiss_text_flava.py
+7. python app.py
+
 

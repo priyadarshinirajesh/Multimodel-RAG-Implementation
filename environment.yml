@@ -1,22 +1,38 @@
-name: mmrag-cpu
+name: mmrag-clinical
 channels:
   - conda-forge
+  - defaults
 dependencies:
   - python=3.10
   - pip
+  - numpy
+  - pandas
+  - pillow
+  - matplotlib
+  - pyarrow=15.0.2
+  - scikit-learn
   - pip:
-      - pillow
-      - numpy>=1.23
-      - pandas
-      - tqdm
-      - pydicom
-      - opencv-python
+      # Qdrant
+      - qdrant-client
+      - fastembed
+
+      # LlamaIndex core
+      - llama-index
+      - llama-index-vector-stores-qdrant
+
+      # Gemini
+      - google-generativeai>=0.3.0
+      - llama-index-llms-gemini
+      - llama-index-embeddings-gemini
+      - llama-index-multi-modal-llms-gemini
+
+      # Multimodal embeddings
       - sentence-transformers
-      - transformers
-      - torch            # on conda-forge we'll use CPU wheel
-      - faiss-cpu
-      - scikit-learn
-      - requests
-      - datasets
-      - sentencepiece
-      - accelerate
+      - llama-index-embeddings-clip
+
+      # Multi-agent
+      - langgraph
+      - langchain-core
+
+      # UI (optional)
+      - gradio

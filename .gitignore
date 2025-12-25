@@ -1,5 +1,3 @@
-data/raw/
-outputs/embeddings/
-outputs/faiss/
-models/
+data/
 .env
+__pycache__/

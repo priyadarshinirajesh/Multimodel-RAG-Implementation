@@ -1,23 +1,42 @@
-from src.rbac import apply_rbac
-from src.retrieve import retrieve_multimodal
-from src.rag_answer import make_rag_answer
+# app.py
 
-def chat():
-    print("🔵 Multimodal RAG Medical Assistant")
-    query = input("Enter your medical query: ")
-    role = input("Enter role (doctor/nurse/patient/admin): ")
+from agents.langgraph_flow.mmrag_graph import build_mmrag_graph
+#from scripts.start_llava_med import is_running, start_llava_med
 
-    # Step 1: Retrieve from database
-    retrieved = retrieve_multimodal(query, top_k=5)
+def main():
+    print("\n🧠 Multimodal Clinical Decision Support System")
+    print("=" * 50)
 
-    # Step 2: Apply RBAC filtering
-    filtered = apply_rbac(role, retrieved)
+    # if not is_running():
+    #     start_llava_med()
 
-    # Step 3: Generate RAG answer
-    answer = make_rag_answer(query, filtered)
+    patient_id = int(input("Enter Patient ID: "))
+    query = input("Enter Clinical Query: ")
 
-    print("\n🟢 Assistant Answer:")
-    print(answer)
+    graph = build_mmrag_graph()
+
+    initial_state = {
+        "patient_id": patient_id,
+        "query": query,
+        "modalities": [],
+        "xray_results": [],
+        "ct_results": [],
+        "mri_results": [],
+        "evidence": [],
+        "final_answer": ""
+    }
+
+    final_state = graph.invoke(initial_state)
+
+    print("\n🔎 RETRIEVED EVIDENCE:")
+    for e in final_state["evidence"]:
+        print(
+            f"- [{e['modality']}] {e['report_text'][:200]}...\n"
+        )
+
+    print("\n🧠 FINAL CLINICAL RESPONSE:")
+    print(final_state["final_answer"])
+
 
 if __name__ == "__main__":
-    chat()
+    main()
