@@ -62,7 +62,7 @@ def clinical_reasoning_agent(query: str, evidence: list):
 
     ensure_ollama_running()
     #logger.info("Extracting image insights using PaliGemma")
-    image_insights = image_insight_agent_ollama(evidence)
+    image_insights = image_insight_agent_ollama(evidence,query)
 
     combined_evidence = []
     for i, e in enumerate(evidence, start=1):
@@ -95,7 +95,9 @@ Clinical Question:
 Respond in EXACTLY this structure and NOTHING else:
 
 Diagnosis / Impression:
-- One short sentence ONLY (max 20 words), ending with citation.
+- One short sentence ONLY (max 20 words)
+- MUST end with one or more citations like [R1], [R2], [R3]
+- IF citation is missing, the answer is INVALID
 
 Supporting Evidence:
 - 2–4 bullet points
@@ -104,8 +106,8 @@ Supporting Evidence:
 
 Next Steps / Recommendations:
 - 1–2 bullets
-- Use neutral language (e.g., "consider", "may be warranted")
-- If none, write: "No further action required."
+- EACH bullet MUST end with a citation [Rx]
+- If recommendation is generic, cite the most relevant evidence
 
 IMPORTANT:
 - DO NOT mention unrelated organs.

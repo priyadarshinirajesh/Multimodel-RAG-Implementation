@@ -10,7 +10,7 @@ def encode_image(image_path):
     with open(image_path, "rb") as f:
         return base64.b64encode(f.read()).decode("utf-8")
 
-def image_insight_agent_ollama(evidence):
+def image_insight_agent_ollama(evidence,query:str):
     image_insights = []
 
     for idx, e in enumerate(evidence, start=1):
@@ -24,17 +24,28 @@ def image_insight_agent_ollama(evidence):
         prompt = """
 You are a medical image observation assistant.
 
-TASK:
-Describe ONLY what is directly visible in this image.
+CLINICAL QUESTION:
+"{user_query}"
 
-STRICT RULES:
+TASK:
+Describe ONLY visual findings that are RELEVANT to the clinical question.
+
+STRICT RULES (MANDATORY):
 - DO NOT name diseases or diagnoses.
-- DO NOT guess organ unless visually obvious.
-- Use anatomical terms ONLY if clearly visible.
-- If a structure is unclear, write exactly: "Unclear from image."
-- Maximum 3 short sentences.
+- DO NOT make clinical conclusions.
+- DO NOT speculate or infer beyond what is visible.
+- Describe anatomy ONLY if it is clearly visible AND relevant.
+- If the image does NOT show information relevant to the question,
+  write EXACTLY: "Unclear from image."
+- If the image is unrelated to the clinical question,
+  write EXACTLY: "Not relevant to the query."
+
+OUTPUT CONSTRAINTS:
+- Maximum 2 short sentences.
 - Each sentence ≤ 12 words.
-- NO speculation.
+- Use neutral, observational language only.
+- NO extra explanations.
+
 """
 
 

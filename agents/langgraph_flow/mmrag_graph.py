@@ -69,15 +69,62 @@ def mri_node(state: MMRAgState):
     return {"mri_results": []}
 
 
-def aggregation_node(state):
-    print("[INFO] [AggregationNode] Aggregating multimodal evidence")
+def precision_recall_mrr(retrieved, ground_truth, k=7):
+    relevant = set(ground_truth)
+    retrieved_k = retrieved[:k]
+    retrieved_set = set(retrieved_k)
+
+    true_positives = len(retrieved_set & relevant)
+    retrieved_count = len(retrieved_set)
+
+    precision = (
+        true_positives / retrieved_count
+        if retrieved_count > 0 else 0
+    )
+
+    recall = (
+        true_positives / len(relevant)
+        if relevant else 0
+    )
+
+    mrr = 0
+    for idx, item in enumerate(retrieved_k, start=1):
+        if item in relevant:
+            mrr = 1 / idx
+            break
+
     return {
-        "evidence": aggregate_evidence(
-            state["xray_results"] +
-            state["ct_results"] +
-            state["mri_results"]
-        )
+        "Precision": round(precision, 3),
+        "Recall": round(recall, 3),
+        "MRR": round(mrr, 3)
     }
+def add_distractors(evidence, k=2):
+    distractors = [
+        {
+            "modality": "XRAY",
+            "report_text": "Normal chest X-ray. No acute findings.",
+            "image_path": None,
+            "has_image": False
+        },
+        {
+            "modality": "CT",
+            "report_text": "Abdominal CT shows normal liver and spleen.",
+            "image_path": None,
+            "has_image": False
+        }
+    ]
+    return evidence + distractors[:k]
+
+def aggregation_node(state):
+    evidence = aggregate_evidence(
+        state["xray_results"]
+        + state["ct_results"]
+        + state["mri_results"]
+    )
+
+    evidence = add_distractors(evidence, k=2)
+
+    return {"evidence": evidence}
 
 
 
