@@ -128,12 +128,6 @@ mmrag-clinical/
 │   ├── evidence_aggregation_agent.py   # Merge multimodal results
 │   ├── clinical_reasoning_agent.py     # DeepSeek reasoning + eval
 │   ├── image_insight_agent_ollama.py   # LLaVA via Ollama (default)
-│   ├── image_insight_agent_paligemma.py
-│   ├── image_insight_agent_blip2.py
-│   ├── image_insight_agent_llava.py
-│   ├── image_insight_agent_llavamed.py
-│   ├── image_insight_agent_api.py      # GPT-4V backend
-│   └── orchestrator.py                 # Alternative non-LangGraph runner
 │
 ├── embeddings/                          # Embedding modules
 │   ├── text_embeddings.py              # CLIP text encoder (512-dim)
@@ -354,15 +348,6 @@ Uses DeepSeek-R1:7B to generate:
 
 ## Configuration
 
-### Environment Variables
-
-Create a `.env` file for optional API backends:
-
-```env
-OPENAI_API_KEY=sk-...      # For GPT-4V image analysis
-GEMINI_API_KEY=...         # For Gemini models
-```
-
 ### Ollama Endpoint
 
 Default: `http://localhost:11434/api/generate`
@@ -390,7 +375,7 @@ Modify in:
 curl http://localhost:11434/api/generate
 
 # Windows: Run as administrator
-start_ollama.bat
+ollama serve
 
 # Linux: Check logs
 journalctl -u ollama
@@ -420,50 +405,6 @@ python -m tests.test_qdrant_basic
 # Check patient exists
 python -m tests.test_patient_retrieval
 ```
-
----
-
-## Optional: LLaVA-Med Setup
-
-For enhanced biomedical image understanding:
-
-```bash
-# Terminal 1: Controller
-conda activate llava-med
-python -m llava.serve.controller --host 0.0.0.0 --port 10000
-
-# Terminal 2: Worker
-python -m llava.serve.model_worker \
-    --controller http://localhost:10000 \
-    --host 0.0.0.0 \
-    --port 40000 \
-    --worker http://localhost:40000 \
-    --model-path microsoft/llava-med-v1.5-mistral-7b \
-    --multi-modal
-```
-
-Then use `image_insight_agent_llavamed.py` instead of the default.
-
----
-
-## License
-
-This project is for **research and educational purposes**. Ensure compliance with:
-- Medical data privacy (HIPAA, GDPR)
-- Model licenses (LLaVA, DeepSeek, CLIP)
-- Dataset terms of use
-
----
-
-## Acknowledgments
-
-- [Qdrant](https://qdrant.tech/) — Vector similarity search
-- [LangGraph](https://langchain-ai.github.io/langgraph/) — Agent orchestration
-- [Ollama](https://ollama.ai/) — Local LLM inference
-- [OpenAI CLIP](https://openai.com/research/clip) — Multimodal embeddings
-- [LLaVA](https://llava-vl.github.io/) — Vision-language models
-
----
 
 <p align="center">
   <b>Built for Clinical AI Research</b> 🏥
