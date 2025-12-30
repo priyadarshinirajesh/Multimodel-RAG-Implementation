@@ -1,29 +1,23 @@
+# streamlit_app.py (UPDATED)
+
 import streamlit as st
 from agents.langgraph_flow.mmrag_graph import build_mmrag_graph
 from PIL import Image
 import os
 
-# ----------------------------------------------------
-# Page config
-# ----------------------------------------------------
 st.set_page_config(
     page_title="Multimodal Clinical Decision Support System",
     layout="wide"
 )
 
-# ----------------------------------------------------
-# Title
-# ----------------------------------------------------
-st.title(" Multimodal Clinical Decision Support System")
+st.title("🧠 Multimodal Clinical Decision Support System")
 st.markdown(
-    "AI-powered multimodal clinical decision support using XRAY, CT, and MRI evidence."
+    "AI-powered multimodal clinical decision support using XRAY, CT, and MRI evidence with **Verification Agent**."
 )
 st.markdown("---")
 
-# ----------------------------------------------------
-# Input Section (MAIN PAGE)
-# ----------------------------------------------------
-st.subheader(" Input Parameters")
+# Input Section
+st.subheader("📝 Input Parameters")
 
 col1, col2 = st.columns([1, 3])
 
@@ -42,16 +36,14 @@ with col2:
         height=80
     )
 
-run_button = st.button(" Run Analysis")
+run_button = st.button("🔬 Run Analysis")
 
 st.markdown("---")
 
-# ----------------------------------------------------
 # Run pipeline
-# ----------------------------------------------------
 if run_button and query.strip():
 
-    with st.spinner("Running multimodal RAG pipeline..."):
+    with st.spinner("Running multimodal RAG pipeline with verification..."):
         graph = build_mmrag_graph()
 
         initial_state = {
@@ -63,16 +55,82 @@ if run_button and query.strip():
             "mri_results": [],
             "evidence": [],
             "final_answer": "",
-            "metrics": {}
+            "metrics": {},
+            "verification_result": {},
+            "improvement_suggestions": [],
+            "requires_rerun": False,
+            "rerun_count": 0
         }
 
-        # DEBUG LOGS WILL STILL APPEAR IN TERMINAL
         final_state = graph.invoke(initial_state)
 
-    # ------------------------------------------------
+    # Verification Results (TOP)
+    st.subheader("✅ Verification Results")
+    
+    verification = final_state.get("verification_result", {})
+    
+    if verification:
+        col1, col2, col3 = st.columns(3)
+        
+        with col1:
+            pass_status = verification.get('overall_pass', False)
+            st.metric(
+                "Overall Status",
+                "✅ PASS" if pass_status else "⚠️ ATTENTION",
+                delta=None
+            )
+        
+        with col2:
+            confidence = verification.get('confidence_score', 0)
+            st.metric(
+                "Confidence Score",
+                f"{confidence:.1%}",
+                delta=None
+            )
+        
+        with col3:
+            reruns = final_state.get('rerun_count', 0)
+            st.metric(
+                "Reruns Performed",
+                reruns,
+                delta=None
+            )
+        
+        # Component scores
+        st.markdown("**Component Scores:**")
+        
+        score_cols = st.columns(4)
+        
+        with score_cols[0]:
+            mod_score = verification.get('modality_routing', {}).get('score', 0)
+            st.metric("Modality Routing", f"{mod_score:.2f}")
+        
+        with score_cols[1]:
+            ev_score = verification.get('evidence_quality', {}).get('score', 0)
+            st.metric("Evidence Quality", f"{ev_score:.2f}")
+        
+        with score_cols[2]:
+            clin_score = verification.get('clinical_response', {}).get('score', 0)
+            st.metric("Clinical Response", f"{clin_score:.2f}")
+        
+        with score_cols[3]:
+            cite_score = verification.get('citation_check', {}).get('score', 0)
+            st.metric("Citation Check", f"{cite_score:.2f}")
+        
+        # Improvement suggestions
+        suggestions = final_state.get("improvement_suggestions", [])
+        if suggestions:
+            st.markdown("**⚠️ Improvement Suggestions Applied:**")
+            for i, s in enumerate(suggestions, 1):
+                priority_emoji = {"CRITICAL": "🔴", "HIGH": "🟠", "MEDIUM": "🟡"}.get(s['priority'], "⚪")
+                st.markdown(f"{i}. {priority_emoji} **{s['agent']}**: {s['details']}")
+        else:
+            st.success("✓ No improvements needed - pipeline executed correctly")
+    
+    st.markdown("---")
+    
     # Retrieved Evidence
-    # ------------------------------------------------
-    st.subheader(" Retrieved Evidence")
+    st.subheader("🔎 Retrieved Evidence")
 
     if not final_state["evidence"]:
         st.warning("No evidence retrieved.")
@@ -97,18 +155,14 @@ if run_button and query.strip():
 
     st.markdown("---")
 
-    # ------------------------------------------------
     # Final Clinical Response
-    # ------------------------------------------------
-    st.subheader(" Final Clinical Response")
+    st.subheader("🧠 Final Clinical Response")
     st.markdown(final_state["final_answer"])
 
     st.markdown("---")
 
-    # ------------------------------------------------
     # Evaluation Metrics
-    # ------------------------------------------------
-    st.subheader(" Evaluation Metrics")
+    st.subheader("📊 Evaluation Metrics")
 
     if final_state["metrics"]:
         metric_cols = st.columns(len(final_state["metrics"]))
