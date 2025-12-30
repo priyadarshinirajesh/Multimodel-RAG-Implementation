@@ -4,22 +4,6 @@ A **Multimodal Retrieval-Augmented Generation (RAG)** system for clinical decisi
 
 ---
 
-## 📋 Table of Contents
-
-- [Overview](#overview)
-- [Architecture](#architecture)
-- [Features](#features)
-- [Tech Stack](#tech-stack)
-- [Project Structure](#project-structure)
-- [Installation](#installation)
-- [Usage](#usage)
-- [Agents](#agents)
-- [Evaluation Metrics](#evaluation-metrics)
-- [Configuration](#configuration)
-- [Troubleshooting](#troubleshooting)
-
----
-
 ## Overview
 
 MM-RAG is a clinical decision support system that leverages multimodal data—medical images and radiology text reports—to provide evidence-based clinical reasoning. The system uses specialized agents orchestrated via LangGraph to:
