@@ -1,15 +1,11 @@
+# agents/evidence_aggregation_agent.py
+
 from utils.logger import get_logger
+
 logger = get_logger("EvidenceAggregator")
 
-def aggregate_evidence(results):
-    """
-    Normalize retrieved results into a clean evidence list.
-    Supports:
-    - Qdrant ScoredPoint
-    - (score, ScoredPoint)
-    - already-normalized dict
-    """
 
+def aggregate_evidence(results, allowed_modalities=None):
     evidence = []
 
     logger.info(
@@ -18,37 +14,44 @@ def aggregate_evidence(results):
 
     for r in results:
 
-        # Case 1: (score, ScoredPoint)
+        # Handle (score, ScoredPoint)
         if isinstance(r, tuple):
             _, r = r
 
-        # Case 2: Qdrant ScoredPoint
+        # Qdrant ScoredPoint
         if hasattr(r, "payload"):
             payload = r.payload
 
-        # Case 3: Already a dict (post-filtering)
+        # Already normalized dict
         elif isinstance(r, dict):
             payload = r
 
         else:
-            logger.warning(f"[EvidenceAggregator] Skipping unknown type: {type(r)}")
+            logger.warning(f"Skipping unknown type: {type(r)}")
+            continue
+
+        modality = payload.get("modality")
+
+        # 🔒 HARD MODALITY ENFORCEMENT
+        if allowed_modalities and modality not in allowed_modalities:
+            logger.warning(
+                f"Skipping evidence due to modality mismatch: {modality}"
+            )
             continue
 
         has_image = payload.get("image_path") is not None
 
         logger.debug(
-            f"[EvidenceAggregator] Record | modality={payload.get('modality')} | "
-            f"has_image={has_image}"
+            f"[EvidenceAggregator] Record | modality={modality} | has_image={has_image}"
         )
 
         evidence.append({
             "patient_id": payload.get("patient_id"),
-            "modality": payload.get("modality"),
+            "modality": modality,
             "organ": payload.get("organ"),
             "report_text": payload.get("report_text", ""),
             "image_path": payload.get("image_path"),
-            "has_image": has_image,
-            "score": payload.get("score")
+            "has_image": has_image
         })
 
     logger.info(

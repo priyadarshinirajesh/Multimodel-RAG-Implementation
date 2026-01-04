@@ -70,6 +70,9 @@ VALID OUTPUTS:
 ["XRAY"]
 ["CT"]
 ["MRI"]
+["XRAY","CT"]
+["XRAY","MRI"]
+["CT","MRI"]
 ["XRAY", "CT", "MRI"]
 """
 

@@ -83,9 +83,9 @@ def mri_node(state: MMRAgState):
     return {"mri_results": []}
 
 
-def add_distractors(evidence, k=2):
+def add_distractors(evidence, allowed_modalities, k=2):
     """Add distractor evidence for robustness testing"""
-    distractors = [
+    ALL_DISTRACTORS = [
         {
             "modality": "XRAY",
             "report_text": "Normal chest X-ray. No acute findings.",
@@ -97,8 +97,20 @@ def add_distractors(evidence, k=2):
             "report_text": "Abdominal CT shows normal liver and spleen.",
             "image_path": None,
             "has_image": False
+        },
+        {
+            "modality": "MRI",
+            "report_text": "Prostate MRI without focal lesions.",
+            "image_path": None,
+            "has_image": False
         }
     ]
+
+    distractors = [
+        d for d in ALL_DISTRACTORS
+        if d["modality"] in allowed_modalities
+    ]
+
     return evidence + distractors[:k]
 
 
@@ -106,10 +118,15 @@ def aggregation_node(state):
     evidence = aggregate_evidence(
         state["xray_results"]
         + state["ct_results"]
-        + state["mri_results"]
+        + state["mri_results"],
+        allowed_modalities=state["modalities"]
     )
 
-    evidence = add_distractors(evidence, k=2)
+    evidence = add_distractors(
+        evidence,
+        allowed_modalities=state["modalities"],
+        k=2
+    )
 
     return {"evidence": evidence}
 

@@ -7,6 +7,18 @@ from utils.logger import get_logger
 
 logger = get_logger("RetrievalUtils")
 
+
+def _filter_by_modality(points, modality):
+    if not modality:
+        return points
+    return [
+        p for p in points
+        if hasattr(p, "payload")
+        and p.payload
+        and p.payload.get("modality") == modality
+    ]
+
+
 def retrieve_patient_records(
     patient_id: int,
     query: str,
@@ -32,55 +44,59 @@ def retrieve_patient_records(
             )
         )
 
+    query_filter = models.Filter(must=must_conditions)
+
     # -------- TEXT RETRIEVAL --------
-    logger.info("[TextRetrieval] Searching TEXT vectors")
+    logger.info(f"[TextRetrieval] Searching TEXT vectors | modality={modality}")
 
     text_response = client.query_points(
         collection_name="clinical_mmrag",
         query=query_vector,
         using="text",
-        query_filter=models.Filter(must=must_conditions),
+        query_filter=query_filter,
         limit=limit
     )
 
     text_points = (
-        text_response[0] if isinstance(text_response, tuple)
-        else text_response.points if hasattr(text_response, "points")
+        text_response.points
+        if hasattr(text_response, "points")
         else text_response
     )
+
+    text_points = _filter_by_modality(text_points, modality)
 
     # -------- IMAGE RETRIEVAL --------
     image_points = []
 
     if include_image:
-        logger.info("[ImageRetrieval] Searching IMAGE vectors")
+        logger.info(f"[ImageRetrieval] Searching IMAGE vectors | modality={modality}")
 
         image_response = client.query_points(
             collection_name="clinical_mmrag",
             query=query_vector,
             using="image",
-            query_filter=models.Filter(must=must_conditions),
+            query_filter=query_filter,
             limit=limit
         )
 
         image_points = (
-            image_response[0] if isinstance(image_response, tuple)
-            else image_response.points if hasattr(image_response, "points")
+            image_response.points
+            if hasattr(image_response, "points")
             else image_response
         )
 
-        for p in image_points:
-            logger.debug(
-                f"[ImageEvidence] {p.payload.get('image_path')}"
-            )
+        image_points = _filter_by_modality(image_points, modality)
 
-    # -------- MERGE --------
+        for p in image_points:
+            logger.debug(f"[ImageEvidence] {p.payload.get('image_path')}")
+
+    # -------- MERGE UNIQUE --------
     all_points = {p.id: p for p in text_points}
     for p in image_points:
         all_points[p.id] = p
 
     logger.info(
-        f"[RetrievalUtils] Total evidence returned: {len(all_points)}"
+        f"[RetrievalUtils] Final evidence count (after modality filter): {len(all_points)}"
     )
 
     return list(all_points.values())
