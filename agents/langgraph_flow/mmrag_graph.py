@@ -1,4 +1,4 @@
-# agents/langgraph_flow/mmrag_graph.py (UPDATED)
+# agents/langgraph_flow/mmrag_graph.py (COMPLETELY UPDATED)
 
 from typing import TypedDict, List, Any
 from langgraph.graph import StateGraph, END
@@ -9,260 +9,444 @@ from agents.ct_agent import ct_agent
 from agents.mri_agent import mri_agent
 from agents.evidence_aggregation_agent import aggregate_evidence
 from agents.clinical_reasoning_agent import clinical_reasoning_agent
-from agents.verification_agent import VerificationAgent
+
+# NEW IMPORTS
+from agents.verifiers.router_verifier import RouterVerifier
+from agents.verifiers.evidence_quality_verifier import EvidenceQualityVerifier
+from agents.verifiers.response_refiner import ResponseRefiner
+from agents.quality_gates import RoutingQualityGate, EvidenceQualityGate, ResponseQualityGate
 
 
 class MMRAgState(TypedDict):
     patient_id: int
     query: str
 
-    # router output
+    # Router outputs
     modalities: List[str]
+    routing_attempts: int
+    routing_verification: dict
+    routing_gate_result: dict
 
-    # modality agents outputs
+    # Retrieval outputs
     xray_results: List[Any]
     ct_results: List[Any]
     mri_results: List[Any]
-
-    # aggregation + reasoning
+    
+    # Evidence outputs
     evidence: List[Any]
+    filtered_evidence: List[Any]
+    evidence_filter_result: dict
+    evidence_gate_result: dict
+    retrieval_attempts: int
+
+    # Reasoning outputs
     final_answer: str
     metrics: dict
+    response_gate_result: dict
+    refinement_result: dict
+    reasoning_attempts: int
+    refinement_count: int  # ADD THIS LINE
     
-    # verification outputs
-    verification_result: dict
-    improvement_suggestions: List[dict]
-    requires_rerun: bool
-    rerun_count: int  # Track number of reruns
+    # Global tracking
+    total_iterations: int
+    quality_scores: dict
 
+
+# ============================================================
+# ROUTING STAGE WITH LOCAL FEEDBACK
+# ============================================================
 
 def router_node(state):
-    print("[INFO] [RouterNode] Routing modalities")
+    """Route query to modalities with local retry capability"""
+    print("\n[INFO] [RouterNode] Starting modality routing...")
+    
     modalities = route_modalities(state["query"])
-    print(f"[DEBUG] Modalities selected: {modalities}")
-    return {"modalities": modalities}
+    
+    return {
+        "modalities": modalities,
+        "routing_attempts": state.get("routing_attempts", 0) + 1
+    }
 
 
-def xray_node(state: MMRAgState):
+def router_verification_node(state):
+    """Verify routing decision immediately"""
+    print("[INFO] [RouterVerification] Verifying routing...")
+    
+    verifier = RouterVerifier()
+    verification_result = verifier.verify_routing(
+        state["query"],
+        state["modalities"]
+    )
+    
+    return {"routing_verification": verification_result}
+
+
+def routing_quality_gate_node(state):
+    """Quality gate for routing"""
+    print("[INFO] [RoutingQualityGate] Evaluating...")
+    
+    gate = RoutingQualityGate()
+    gate_result = gate.evaluate(
+        query=state["query"],
+        selected_modalities=state["modalities"],
+        verification_result=state["routing_verification"]
+    )
+    
+    return {"routing_gate_result": gate_result}
+
+
+def should_retry_routing(state) -> str:
+    """Decide if routing needs retry"""
+    
+    gate_result = state.get("routing_gate_result", {})
+    decision = gate_result.get("decision", "PASS")
+    attempts = state.get("routing_attempts", 0)
+    
+    if decision == "PASS":
+        print("[INFO] Routing PASSED - proceeding to retrieval")
+        return "proceed"
+    
+    if attempts >= 2:
+        print("[WARNING] Max routing attempts reached - proceeding anyway")
+        return "proceed"
+    
+    if decision == "FAIL" or decision == "RETRY":
+        print(f"[INFO] Routing {decision} - retrying with corrections")
+        return "retry"
+    
+    return "proceed"
+
+
+def routing_correction_node(state):
+    """Apply corrections to routing based on verification feedback"""
+    print("[INFO] [RoutingCorrection] Applying corrections...")
+    
+    verification = state.get("routing_verification", {})
+    suggested_modalities = verification.get("suggested_modalities", state["modalities"])
+    
+    print(f"[INFO] Correcting modalities: {state['modalities']} → {suggested_modalities}")
+    
+    return {
+        "modalities": suggested_modalities,
+        "routing_attempts": state.get("routing_attempts", 0)
+    }
+
+
+# ============================================================
+# RETRIEVAL STAGE (No changes needed - already parallel)
+# ============================================================
+
+def xray_node(state):
     if "XRAY" in state["modalities"]:
-        # Adjust retrieval limit if suggested
-        limit = 5
-        if state.get("improvement_suggestions"):
-            for suggestion in state["improvement_suggestions"]:
-                if suggestion["agent"] == "retrieval_agents" and "increase_retrieval_limit" in suggestion["action"]:
-                    limit = 7
-        
-        return {
-            "xray_results": xray_agent(
-                state["patient_id"],
-                state["query"]
-            )
-        }
+        return {"xray_results": xray_agent(state["patient_id"], state["query"])}
     return {"xray_results": []}
 
 
-def ct_node(state: MMRAgState):
+def ct_node(state):
     if "CT" in state["modalities"]:
-        return {
-            "ct_results": ct_agent(
-                state["patient_id"],
-                state["query"]
-            )
-        }
+        return {"ct_results": ct_agent(state["patient_id"], state["query"])}
     return {"ct_results": []}
 
 
-def mri_node(state: MMRAgState):
+def mri_node(state):
     if "MRI" in state["modalities"]:
-        return {
-            "mri_results": mri_agent(
-                state["patient_id"],
-                state["query"]
-            )
-        }
+        return {"mri_results": mri_agent(state["patient_id"], state["query"])}
     return {"mri_results": []}
 
 
-def add_distractors(evidence, allowed_modalities, k=2):
-    """Add distractor evidence for robustness testing"""
-    ALL_DISTRACTORS = [
-        {
-            "modality": "XRAY",
-            "report_text": "Normal chest X-ray. No acute findings.",
-            "image_path": None,
-            "has_image": False
-        },
-        {
-            "modality": "CT",
-            "report_text": "Abdominal CT shows normal liver and spleen.",
-            "image_path": None,
-            "has_image": False
-        },
-        {
-            "modality": "MRI",
-            "report_text": "Prostate MRI without focal lesions.",
-            "image_path": None,
-            "has_image": False
-        }
-    ]
-
-    distractors = [
-        d for d in ALL_DISTRACTORS
-        if d["modality"] in allowed_modalities
-    ]
-
-    return evidence + distractors[:k]
-
+# ============================================================
+# EVIDENCE STAGE WITH QUALITY FILTERING
+# ============================================================
 
 def aggregation_node(state):
+    """Aggregate evidence from all modalities"""
+    print("[INFO] [Aggregation] Merging evidence...")
+    
     evidence = aggregate_evidence(
-        state["xray_results"]
-        + state["ct_results"]
-        + state["mri_results"],
+        state["xray_results"] + state["ct_results"] + state["mri_results"],
         allowed_modalities=state["modalities"]
     )
-
-    evidence = add_distractors(
-        evidence,
-        allowed_modalities=state["modalities"],
-        k=2
-    )
-
-    return {"evidence": evidence}
-
-
-def reasoning_node(state):
-    print("[INFO] [ReasoningNode] Invoking DeepSeek with multimodal evidence")
-
-    result = clinical_reasoning_agent(
-        state["query"],
-        state["evidence"]
-    )
-
+    
     return {
-        "final_answer": result["final_answer"],
-        "metrics": result["metrics"]
+        "evidence": evidence,
+        "retrieval_attempts": state.get("retrieval_attempts", 0) + 1
     }
 
 
-def verification_node(state: MMRAgState):
-    """Verification Agent node - validates pipeline execution"""
+def evidence_quality_filter_node(state):
+    """Filter and verify evidence quality"""
+    print("[INFO] [EvidenceFilter] Filtering evidence...")
     
-    print("\n[INFO] [VerificationNode] Starting verification")
-    
-    verifier = VerificationAgent()
-    
-    verification_output = verifier.verify_pipeline(
+    verifier = EvidenceQualityVerifier()
+    filter_result = verifier.verify_and_filter(
         query=state["query"],
-        selected_modalities=state["modalities"],
         evidence=state["evidence"],
-        final_answer=state["final_answer"],
+        selected_modalities=state["modalities"]
+    )
+    
+    return {
+        "filtered_evidence": filter_result["filtered_evidence"],
+        "evidence_filter_result": filter_result
+    }
+
+
+def evidence_quality_gate_node(state):
+    """Quality gate for evidence"""
+    print("[INFO] [EvidenceQualityGate] Evaluating...")
+    
+    gate = EvidenceQualityGate()
+    gate_result = gate.evaluate(
+        evidence=state["evidence"],
+        filter_result=state["evidence_filter_result"],
+        query=state["query"]
+    )
+    
+    return {"evidence_gate_result": gate_result}
+
+
+def should_retry_retrieval(state) -> str:
+    """Decide if retrieval needs retry"""
+    
+    gate_result = state.get("evidence_gate_result", {})
+    decision = gate_result.get("decision", "PASS")
+    attempts = state.get("retrieval_attempts", 0)
+    
+    if decision == "PASS":
+        print("[INFO] Evidence quality PASSED - proceeding to reasoning")
+        return "proceed"
+    
+    if attempts >= 2:
+        print("[WARNING] Max retrieval attempts reached - proceeding anyway")
+        return "proceed"
+    
+    if decision == "FAIL":
+        print("[INFO] Evidence quality FAILED - retrying retrieval")
+        return "retry"
+    
+    return "proceed"
+
+
+def retrieval_adjustment_node(state):
+    """Adjust retrieval parameters based on feedback"""
+    print("[INFO] [RetrievalAdjustment] Adjusting retrieval parameters...")
+    
+    # Could increase limit, change query, etc.
+    # For now, just increment attempts to trigger different retrieval
+    
+    return {
+        "retrieval_attempts": state.get("retrieval_attempts", 0),
+        # Clear evidence to force re-retrieval
+        "evidence": [],
+        "filtered_evidence": []
+    }
+
+
+# ============================================================
+# REASONING STAGE WITH PROGRESSIVE REFINEMENT
+# ============================================================
+
+def reasoning_node(state):
+    """Generate clinical response"""
+    print("[INFO] [ReasoningNode] Generating clinical response...")
+    
+    # Use filtered evidence (high quality)
+    evidence = state.get("filtered_evidence", state.get("evidence", []))
+    
+    result = clinical_reasoning_agent(state["query"], evidence)
+    
+    return {
+        "final_answer": result["final_answer"],
+        "metrics": result["metrics"],
+        "reasoning_attempts": state.get("reasoning_attempts", 0) + 1
+    }
+
+
+def response_quality_gate_node(state):
+    """Quality gate for response"""
+    print("[INFO] [ResponseQualityGate] Evaluating...")
+    
+    gate = ResponseQualityGate()
+    gate_result = gate.evaluate(
+        response=state["final_answer"],
+        evidence=state.get("filtered_evidence", []),
         metrics=state["metrics"]
     )
     
+    return {"response_gate_result": gate_result}
+
+
+def should_refine_response(state) -> str:
+    """Decide if response needs refinement"""
+    
+    gate_result = state.get("response_gate_result", {})
+    decision = gate_result.get("decision", "PASS")
+    attempts = state.get("reasoning_attempts", 0)
+    
+    if decision == "PASS":
+        print("[INFO] Response quality PASSED - completing")
+        return "complete"
+    
+    # CRITICAL FIX: Max 2 refinement attempts (not reasoning attempts)
+    refinement_count = state.get("refinement_count", 0)
+    if refinement_count >= 2:  # Changed from reasoning_attempts to refinement_count
+        print(f"[WARNING] Max refinement attempts reached ({refinement_count}) - completing anyway")
+        return "complete"
+    
+    if decision in ["FAIL", "RETRY"]:
+        print(f"[INFO] Response needs refinement (attempt {refinement_count + 1}/2)")
+        return "refine"
+    
+    return "complete"
+
+
+def response_refinement_node(state):
+    """Apply progressive refinement to response"""
+    print("[INFO] [ResponseRefinement] Applying progressive refinement...")
+    
+    refiner = ResponseRefiner()
+    refinement_result = refiner.refine_response(
+        initial_response=state["final_answer"],
+        evidence=state.get("filtered_evidence", []),
+        query=state["query"]
+    )
+    
+    # Increment refinement counter
+    refinement_count = state.get("refinement_count", 0) + 1
+    
     return {
-        "verification_result": verification_output["verification_result"],
-        "improvement_suggestions": verification_output["improvement_suggestions"],
-        "requires_rerun": verification_output["requires_rerun"]
+        "final_answer": refinement_result["refined_response"],
+        "refinement_result": refinement_result,
+        "refinement_count": refinement_count  # ADD THIS LINE
     }
 
 
-def should_rerun(state: MMRAgState) -> str:
-    """Conditional edge: decide whether to rerun or end"""
-    
-    # Prevent infinite loops - max 2 reruns
-    rerun_count = state.get("rerun_count", 0)
-    if rerun_count >= 2:
-        print("[INFO] Max reruns reached (2). Proceeding to END.")
-        return "end"
-    
-    if state.get("requires_rerun", False):
-        print(f"[INFO] Rerun required. Iteration: {rerun_count + 1}")
-        return "rerun"
-    
-    return "end"
+# ============================================================
+# FINAL SUMMARY NODE
+# ============================================================
 
-
-def rerun_preparation_node(state: MMRAgState):
-    """Prepare state for rerun based on improvement suggestions"""
+def summary_node(state):
+    """Generate final summary of quality and iterations"""
+    print("\n[INFO] [Summary] Generating pipeline summary...")
     
-    print("\n[INFO] [RerunPreparation] Applying improvements")
+    quality_scores = {
+        "routing": state.get("routing_gate_result", {}).get("score", 0),
+        "evidence": state.get("evidence_gate_result", {}).get("score", 0),
+        "response": state.get("response_gate_result", {}).get("score", 0)
+    }
     
-    suggestions = state.get("improvement_suggestions", [])
-    
-    # Apply modality routing changes
-    for suggestion in suggestions:
-        if suggestion["agent"] == "modality_router":
-            if suggestion["action"] == "add_modalities":
-                # Extract modalities to add from details
-                import re
-                match = re.search(r'\[(.*?)\]', suggestion["details"])
-                if match:
-                    new_modalities = eval(match.group(0))
-                    current_modalities = set(state["modalities"])
-                    current_modalities.update(new_modalities)
-                    state["modalities"] = list(current_modalities)
-                    print(f"[RerunPrep] Updated modalities: {state['modalities']}")
-    
-    # Increment rerun counter
-    rerun_count = state.get("rerun_count", 0) + 1
+    total_iterations = (
+        state.get("routing_attempts", 0) +
+        state.get("retrieval_attempts", 0) +
+        state.get("reasoning_attempts", 0)
+    )
     
     return {
-        "modalities": state["modalities"],
-        "rerun_count": rerun_count,
-        # Clear previous results to force re-retrieval
-        "xray_results": [],
-        "ct_results": [],
-        "mri_results": [],
-        "evidence": [],
-        "final_answer": "",
-        "metrics": {}
+        "quality_scores": quality_scores,
+        "total_iterations": total_iterations
     }
 
+
+# ============================================================
+# BUILD GRAPH
+# ============================================================
 
 def build_mmrag_graph():
-    """Build the MM-RAG graph with verification loop"""
+    """Build the improved MM-RAG graph with quality gates and local feedback"""
     
     graph = StateGraph(MMRAgState)
 
-    # Register nodes
+    # ===== ROUTING STAGE =====
     graph.add_node("router", router_node)
+    graph.add_node("router_verification", router_verification_node)
+    graph.add_node("routing_quality_gate", routing_quality_gate_node)
+    graph.add_node("routing_correction", routing_correction_node)
+    
+    # ===== RETRIEVAL STAGE =====
     graph.add_node("xray", xray_node)
     graph.add_node("ct", ct_node)
     graph.add_node("mri", mri_node)
+    
+    # ===== EVIDENCE STAGE =====
     graph.add_node("aggregate", aggregation_node)
+    graph.add_node("evidence_filter", evidence_quality_filter_node)
+    graph.add_node("evidence_quality_gate", evidence_quality_gate_node)
+    graph.add_node("retrieval_adjustment", retrieval_adjustment_node)
+    
+    # ===== REASONING STAGE =====
     graph.add_node("reason", reasoning_node)
-    graph.add_node("verify", verification_node)
-    graph.add_node("rerun_prep", rerun_preparation_node)
+    graph.add_node("response_quality_gate", response_quality_gate_node)
+    graph.add_node("response_refinement", response_refinement_node)
+    
+    # ===== SUMMARY =====
+    graph.add_node("summary", summary_node)
 
-    # Define execution flow
+    # ===== DEFINE EDGES =====
+    
+    # Entry point
     graph.set_entry_point("router")
-
-    # Parallel modality retrieval
-    graph.add_edge("router", "xray")
-    graph.add_edge("router", "ct")
-    graph.add_edge("router", "mri")
-
+    
+    # Routing stage flow
+    graph.add_edge("router", "router_verification")
+    graph.add_edge("router_verification", "routing_quality_gate")
+    
+    # Routing decision
+    graph.add_conditional_edges(
+        "routing_quality_gate",
+        should_retry_routing,
+        {
+            "retry": "routing_correction",
+            "proceed": "xray"  # Start parallel retrieval
+        }
+    )
+    
+    # Routing correction loops back
+    graph.add_edge("routing_correction", "router")
+    
+    # Parallel retrieval (triggered from routing_quality_gate)
+    graph.add_edge("routing_quality_gate", "ct")
+    graph.add_edge("routing_quality_gate", "mri")
+    
     # Converge to aggregation
     graph.add_edge("xray", "aggregate")
     graph.add_edge("ct", "aggregate")
     graph.add_edge("mri", "aggregate")
-
-    # Reasoning -> Verification
-    graph.add_edge("aggregate", "reason")
-    graph.add_edge("reason", "verify")
-
-    # Conditional edge: rerun or end
+    
+    # Evidence stage flow
+    graph.add_edge("aggregate", "evidence_filter")
+    graph.add_edge("evidence_filter", "evidence_quality_gate")
+    
+    # Evidence decision
     graph.add_conditional_edges(
-        "verify",
-        should_rerun,
+        "evidence_quality_gate",
+        should_retry_retrieval,
         {
-            "rerun": "rerun_prep",
-            "end": END
+            "retry": "retrieval_adjustment",
+            "proceed": "reason"
         }
     )
-
-    # Rerun loop back to router
-    graph.add_edge("rerun_prep", "router")
+    
+    # Retrieval adjustment loops back
+    graph.add_edge("retrieval_adjustment", "xray")
+    graph.add_edge("retrieval_adjustment", "ct")
+    graph.add_edge("retrieval_adjustment", "mri")
+    
+    # Reasoning stage flow
+    graph.add_edge("reason", "response_quality_gate")
+    
+    # Response decision
+    graph.add_conditional_edges(
+        "response_quality_gate",
+        should_refine_response,
+        {
+            "refine": "response_refinement",
+            "complete": "summary"
+        }
+    )
+    
+    # Refinement loops back to quality gate
+    graph.add_edge("response_refinement", "response_quality_gate")
+    
+    # Summary to end
+    graph.add_edge("summary", END)
 
     return graph.compile()
