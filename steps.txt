@@ -4,11 +4,7 @@
 4. python -m ingestion.ingest_to_qdrant
 5.python -m tests.test_qdrant_basic
 6. python -m tests.test_patient_retrieval
+7. python streamlit run streamlit_app.py
 
-also : conda activate llava-med 
-python -m llava.serve.controller --host 0.0.0.0 --port 10000
-python -m llava.serve.model_worker --controller http://localhost:10000 --host 0.0.0.0 --port 40000 --worker http://localhost:40000 --model-path microsoft/llava-med-v1.5-mistral-7b --multi-modal
-
-7. python app.py
 
 
