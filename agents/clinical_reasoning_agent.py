@@ -44,7 +44,7 @@ def ensure_ollama_running():
 
     raise RuntimeError("❌ Ollama failed to start")
 
-from agents.image_insight_agent_ollama import image_insight_agent_ollama
+from agents.image_insight_agent_llava_med import image_insight_agent_llava_med
 from utils.logger import get_logger
 
 logger = get_logger("ReasoningAgent")
@@ -62,7 +62,7 @@ def clinical_reasoning_agent(query: str, evidence: list):
 
     ensure_ollama_running()
     #logger.info("Extracting image insights using PaliGemma")
-    image_insights = image_insight_agent_ollama(evidence,query)
+    image_insights = image_insight_agent_llava_med(evidence,query)
 
     combined_evidence = []
     for i, e in enumerate(evidence, start=1):

@@ -1,3 +1,7 @@
 data/
 .env
 __pycache__/
+hey.xlsx
+mmrag_evaluation_results2.xlsx
+trial.xlsx
+chest_xray_test_queries_p.xlsx

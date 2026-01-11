@@ -5,8 +5,8 @@ import numpy as np
 from agents.langgraph_flow.mmrag_graph import build_mmrag_graph
 from datetime import datetime
 
-INPUT_FILE = "prompt_queries_150.xlsx"
-OUTPUT_FILE = "mmrag_evaluation_results1.xlsx"
+INPUT_FILE = "trial.xlsx"
+OUTPUT_FILE = "mmrag_evaluation_results.xlsx"
 
 
 def run_batch_evaluation():
