@@ -111,36 +111,60 @@ class EvidenceQualityVerifier:
         return evidence
     
     def _remove_duplicates(self, evidence: list) -> list:
-        """Remove near-duplicate evidence items"""
-        
+        """
+        Remove duplicate clinical statements across evidence,
+        WITHOUT removing entire evidence objects.
+        Images are untouched.
+        """
+
         if len(evidence) <= 1:
             return evidence
-        
-        # Extract embeddings from evidence texts
-        texts = [e.get("report_text", "") for e in evidence]
-        embeddings = _embedder.encode(texts)
-        
-        # Calculate pairwise similarities
+
+        # Step 1: Extract all sentences with back-references
+        sentence_bank = []
+        for idx, e in enumerate(evidence):
+            text = e.get("report_text", "")
+            sentences = [s.strip() for s in text.split(".") if s.strip()]
+            for s in sentences:
+                sentence_bank.append({
+                    "sentence": s,
+                    "evidence_idx": idx
+                })
+
+        if not sentence_bank:
+            return evidence
+
+        # Step 2: Embed all sentences
+        sentences = [item["sentence"] for item in sentence_bank]
+        embeddings = _embedder.encode(sentences)
+
         similarity_matrix = cosine_similarity(embeddings)
-        
-        # Mark duplicates (similarity > 0.9)
-        keep_indices = []
-        for i in range(len(evidence)):
-            is_duplicate = False
+
+        # Step 3: Identify duplicate sentences
+        duplicate_sentence_indices = set()
+        for i in range(len(sentences)):
             for j in range(i):
-                if similarity_matrix[i][j] > 0.9:
-                    is_duplicate = True
+                if similarity_matrix[i][j] > 0.92:  # strict threshold
+                    duplicate_sentence_indices.add(i)
                     break
-            if not is_duplicate:
-                keep_indices.append(i)
-        
-        deduplicated = [evidence[i] for i in keep_indices]
-        
-        removed = len(evidence) - len(deduplicated)
-        if removed > 0:
-            logger.info(f"[EvidenceFilter] Removed {removed} duplicate items")
-        
-        return deduplicated
+
+        # Step 4: Reconstruct cleaned reports
+        cleaned_reports = {i: [] for i in range(len(evidence))}
+
+        for idx, item in enumerate(sentence_bank):
+            if idx not in duplicate_sentence_indices:
+                cleaned_reports[item["evidence_idx"]].append(item["sentence"])
+
+        # Step 5: Update evidence objects
+        for idx, e in enumerate(evidence):
+            cleaned_text = ". ".join(cleaned_reports[idx])
+            if cleaned_text:
+                e["report_text"] = cleaned_text + "."
+            else:
+                e["report_text"] = ""
+
+        return evidence
+
     
     def _calculate_quality_score(self, filtered_evidence: list, original_count: int) -> float:
         """Calculate overall evidence quality score"""
