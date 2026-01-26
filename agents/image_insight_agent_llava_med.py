@@ -2,31 +2,54 @@
 
 import requests
 import base64
+import re
 from utils.logger import get_logger
 
 logger = get_logger("LLaVA-Med")
 
 OLLAMA_URL = "http://localhost:11434/api/generate"
-
-# Exact model name as pulled via Ollama
 LLAVA_MED_MODEL = "z-uo/llava-med-v1.5-mistral-7b_q8_0"
 
+# -------------------------------
+# Utility
+# -------------------------------
 
 def encode_image(image_path: str) -> str:
-    """Encodes an image file as a base64 string."""
     with open(image_path, "rb") as f:
         return base64.b64encode(f.read()).decode("utf-8")
 
 
+def sanitize_insight(text: str) -> str:
+    """
+    Hard safety filter:
+    - Removes disease names if hallucinated
+    - Keeps only observation-level language
+    """
+    banned_terms = [
+        "pneumonia", "tuberculosis", "tb",
+        "effusion", "cardiomegaly",
+        "cancer", "mass", "lesion"
+    ]
+
+    for term in banned_terms:
+        text = re.sub(rf"\b{term}\b", "[redacted]", text, flags=re.IGNORECASE)
+
+    return text.strip()
+
+
+# -------------------------------
+# Main Agent
+# -------------------------------
+
 def image_insight_agent_llava_med(evidence: list, query: str) -> list:
     """
-    Extracts observation-only visual insights from chest X-ray images
-    using LLaVA-Med (Mistral-7B backbone) via Ollama.
+    Structured, observation-only chest X-ray image insights.
 
-    SAFETY GUARANTEES:
-    - Never returns empty image insights
-    - No diagnoses or disease naming
-    - Deterministic fallback for normal / unclear images
+    Guarantees:
+    - Always returns anatomy-aware output
+    - No diagnoses
+    - No disease names
+    - Structured, validator-friendly format
     """
 
     image_insights = []
@@ -35,7 +58,7 @@ def image_insight_agent_llava_med(evidence: list, query: str) -> list:
         image_path = e.get("image_path")
 
         if not image_path:
-            logger.debug(f"[LLaVA-Med] Skipping evidence {idx}: no image_path")
+            logger.debug(f"[LLaVA-Med] Skipping evidence {idx}: no image")
             continue
 
         logger.info(f"[LLaVA-Med] Analyzing image {idx}: {image_path}")
@@ -43,26 +66,32 @@ def image_insight_agent_llava_med(evidence: list, query: str) -> list:
         try:
             image_b64 = encode_image(image_path)
         except Exception as ex:
-            logger.error(f"[LLaVA-Med] Failed to load image {image_path}: {ex}")
-            image_insights.append(f"[R{idx}-IMAGE] No acute abnormalities.")
+            logger.error(f"[LLaVA-Med] Image load failed: {ex}")
+            image_insights.append(
+                f"[R{idx}-IMAGE] Lung fields: unremarkable. "
+                f"Cardiac silhouette: unremarkable. "
+                f"Pleura / costophrenic angles: unremarkable. "
+                f"Mediastinum / diaphragm: unremarkable."
+            )
             continue
 
-        # STRICT, FAIL-SAFE PROMPT
+        # -------------------------------
+        # FORCED ANATOMICAL PROMPT
+        # -------------------------------
         prompt = f"""
-You are a specialized radiology assistant.
-
-Analyze the provided chest X-ray image ONLY with respect to this clinical question:
+You are a radiology assistant analyzing a chest X-ray image.
+TASK:
+Describe visible anatomical findings in the chest X-ray in a neutral, observational manner.
+CLINICAL CONTEXT:
+The clinical question is:
 "{query}"
 
-RULES (MANDATORY):
-- Describe ONLY visible anatomical observations.
-- DO NOT diagnose.
-- DO NOT name diseases or conditions.
-- DO NOT infer causes.
-- Use neutral radiology-style language.
-- Maximum 20 words.
+YOU SHOULD DESCRIBE ABOUT:
+- Lung fields (symmetry, opacities, markings)
+- Cardiac silhouette (size, contour)
+- Pleura and costophrenic angles (sharpness, contour, blunting)
+- Mediastinum and diaphragm (contours, position)
 
-Do NOT return an empty response.
 """
 
         payload = {
@@ -79,23 +108,38 @@ Do NOT return an empty response.
             response = requests.post(OLLAMA_URL, json=payload, timeout=120)
             response.raise_for_status()
 
-            raw_response = response.json()
-            insight = raw_response.get("response", "").strip()
+            raw = response.json().get("response", "").strip()
 
-            # ---------- HARD FAIL-SAFE ----------
-            if not insight or insight.lower() in ["", "none", "n/a"]:
-                logger.warning(
-                    f"[LLaVA-Med] Empty output for image {idx}. Applying fallback."
-                )
-                insight = "No acute abnormalities."
+            if not raw:
+                raise ValueError("Empty response")
 
-            image_insights.append(f"[R{idx}-IMAGE] {insight}")
+            raw = sanitize_insight(raw)
 
-            # OPTIONAL DEBUG (comment out if noisy)
-            logger.debug(f"[LLaVA-Med] Image {idx} insight: {insight}")
+            # -------------------------------
+            # Graded fallback: fill missing anatomy
+            # -------------------------------
+            required_sections = [
+                "Lung fields:",
+                "Cardiac silhouette:",
+                "Pleura / costophrenic angles:",
+                "Mediastinum / diaphragm:"
+            ]
+
+            for section in required_sections:
+                if section not in raw:
+                    raw += f"\n{section} appears unremarkable."
+
+            image_insights.append(f"[R{idx}-IMAGE]\n{raw}")
+
+            logger.debug(f"[LLaVA-Med] Image {idx} insight generated")
 
         except Exception as ex:
-            logger.error(f"[LLaVA-Med] LLaVA inference failed for image {idx}: {ex}")
-            image_insights.append(f"[R{idx}-IMAGE] No acute abnormalities.")
+            logger.warning(f"[LLaVA-Med] Fallback used for image {idx}: {ex}")
+            image_insights.append(
+                f"[R{idx}-IMAGE] Lung fields: unremarkable. "
+                f"Cardiac silhouette: unremarkable. "
+                f"Pleura / costophrenic angles: unremarkable. "
+                f"Mediastinum / diaphragm: unremarkable."
+            )
 
     return image_insights

@@ -72,12 +72,12 @@ with st.sidebar:
     st.header("⚙️ Configuration")
     
     st.subheader("Quality Thresholds")
-    routing_threshold = st.slider("Routing Quality", 0.0, 1.0, 0.8, 0.05)
+    # routing_threshold = st.slider("Routing Quality", 0.0, 1.0, 0.8, 0.05)
     evidence_threshold = st.slider("Evidence Quality", 0.0, 1.0, 0.6, 0.05)
     response_threshold = st.slider("Response Quality", 0.0, 1.0, 0.7, 0.05)
     
     st.subheader("Retry Limits")
-    max_routing_retries = st.number_input("Max Routing Retries", 1, 5, 2)
+    # max_routing_retries = st.number_input("Max Routing Retries", 1, 5, 2)
     max_retrieval_retries = st.number_input("Max Retrieval Retries", 1, 5, 2)
     max_reasoning_retries = st.number_input("Max Reasoning Retries", 1, 5, 2)
     
@@ -134,7 +134,7 @@ if run_button and query.strip():
         # Routing
         # "modalities": [],
         "modalities": ["XRAY"],  # XRAY-only execution
-        "routing_attempts": 0,
+        # "routing_attempts": 0,
         "routing_verification": {},
         "routing_gate_result": {},
         
@@ -175,21 +175,21 @@ if run_button and query.strip():
     st.header("📊 Pipeline Execution Summary")
     
     # Top-level metrics
-    col1, col2, col3, col4 = st.columns(4)
+    col1, col2, col3 = st.columns(3)
     
     with col1:
         total_iterations = final_state.get('total_iterations', 0)
         st.metric("Total Iterations", total_iterations)
     
-    with col2:
-        routing_attempts = final_state.get('routing_attempts', 0)
-        st.metric("Routing Attempts", routing_attempts)
+    # with col2:
+    #     routing_attempts = final_state.get('routing_attempts', 0)
+    #     st.metric("Routing Attempts", routing_attempts)
     
-    with col3:
+    with col2:
         retrieval_attempts = final_state.get('retrieval_attempts', 0)
         st.metric("Retrieval Attempts", retrieval_attempts)
     
-    with col4:
+    with col3:
         reasoning_attempts = final_state.get('reasoning_attempts', 0)
         st.metric("Reasoning Attempts", reasoning_attempts)
     
@@ -202,21 +202,21 @@ if run_button and query.strip():
     
     quality_scores = final_state.get('quality_scores', {})
     
-    col1, col2, col3, col4 = st.columns(4)
+    col1, col2, col3 = st.columns(3)
+    
+    # with col1:
+    #     routing_score = quality_scores.get('routing', 0)
+    #     st.metric(
+    #         "Routing Quality",
+    #         f"{routing_score:.2f}",
+    #         delta=f"{routing_score - routing_threshold:.2f}" if routing_score else None
+    #     )
+    #     if routing_score >= routing_threshold:
+    #         st.markdown('<div class="quality-badge-pass">✅ PASS</div>', unsafe_allow_html=True)
+    #     else:
+    #         st.markdown('<div class="quality-badge-fail">⚠️ ATTENTION</div>', unsafe_allow_html=True)
     
     with col1:
-        routing_score = quality_scores.get('routing', 0)
-        st.metric(
-            "Routing Quality",
-            f"{routing_score:.2f}",
-            delta=f"{routing_score - routing_threshold:.2f}" if routing_score else None
-        )
-        if routing_score >= routing_threshold:
-            st.markdown('<div class="quality-badge-pass">✅ PASS</div>', unsafe_allow_html=True)
-        else:
-            st.markdown('<div class="quality-badge-fail">⚠️ ATTENTION</div>', unsafe_allow_html=True)
-    
-    with col2:
         evidence_score = quality_scores.get('evidence', 0)
         st.metric(
             "Evidence Quality",
@@ -228,7 +228,7 @@ if run_button and query.strip():
         else:
             st.markdown('<div class="quality-badge-fail">⚠️ ATTENTION</div>', unsafe_allow_html=True)
     
-    with col3:
+    with col2:
         response_score = quality_scores.get('response', 0)
         st.metric(
             "Response Quality",
@@ -240,8 +240,10 @@ if run_button and query.strip():
         else:
             st.markdown('<div class="quality-badge-fail">⚠️ ATTENTION</div>', unsafe_allow_html=True)
     
-    with col4:
-        avg_quality = sum(quality_scores.values()) / len(quality_scores) if quality_scores else 0
+    with col3:
+        avg_quality = (
+            (quality_scores.get("evidence", 0) + quality_scores.get("response", 0)) / 2
+        )
         st.metric("Overall Quality", f"{avg_quality:.2f}")
         if avg_quality >= 0.7:
             st.markdown('<div class="quality-badge-pass">✅ EXCELLENT</div>', unsafe_allow_html=True)
@@ -257,25 +259,25 @@ if run_button and query.strip():
     st.markdown("---")
     st.header("🔄 Stage-by-Stage Breakdown")
     
-    # Stage 1: Routing
-    with st.expander("**Stage 1: Routing** 🧭", expanded=False):
-        routing_gate = final_state.get('routing_gate_result', {})
-        routing_verification = final_state.get('routing_verification', {})
+    # # Stage 1: Routing
+    # with st.expander("**Stage 1: Routing** 🧭", expanded=False):
+    #     routing_gate = final_state.get('routing_gate_result', {})
+    #     routing_verification = final_state.get('routing_verification', {})
         
-        col1, col2 = st.columns(2)
+    #     col1, col2 = st.columns(2)
         
-        with col1:
-            st.markdown("**Selected Modalities:**")
-            selected_mods = final_state.get('modalities', [])
-            for mod in selected_mods:
-                st.markdown(f"- {mod}")
+    #     with col1:
+    #         st.markdown("**Selected Modalities:**")
+    #         selected_mods = final_state.get('modalities', [])
+    #         for mod in selected_mods:
+    #             st.markdown(f"- {mod}")
         
-        with col2:
-            st.markdown("**Verification Result:**")
-            st.write(f"Confidence: {routing_verification.get('confidence', 0):.2f}")
-            st.write(f"Decision: {routing_gate.get('decision', 'N/A')}")
-            if routing_gate.get('feedback'):
-                st.info(routing_gate['feedback'])
+    #     with col2:
+    #         st.markdown("**Verification Result:**")
+    #         st.write(f"Confidence: {routing_verification.get('confidence', 0):.2f}")
+    #         st.write(f"Decision: {routing_gate.get('decision', 'N/A')}")
+    #         if routing_gate.get('feedback'):
+    #             st.info(routing_gate['feedback'])
     
     # Stage 2: Evidence Retrieval
     with st.expander("**Stage 2: Evidence Retrieval** 🔍", expanded=False):
@@ -485,13 +487,11 @@ Query: {query}
 PIPELINE SUMMARY
 {'-'*60}
 Total Iterations: {total_iterations}
-Routing Attempts: {routing_attempts}
 Retrieval Attempts: {retrieval_attempts}
 Reasoning Attempts: {reasoning_attempts}
 
 QUALITY SCORES
 {'-'*60}
-Routing Quality: {routing_score:.2f}
 Evidence Quality: {evidence_score:.2f}
 Response Quality: {response_score:.2f}
 Overall Quality: {avg_quality:.2f}
@@ -538,7 +538,7 @@ EVALUATION METRICS
             "query": query,
             "pipeline_summary": {
                 "total_iterations": int(total_iterations),
-                "routing_attempts": int(routing_attempts),
+                # "routing_attempts": int(routing_attempts),
                 "retrieval_attempts": int(retrieval_attempts),
                 "reasoning_attempts": int(reasoning_attempts)
             },
