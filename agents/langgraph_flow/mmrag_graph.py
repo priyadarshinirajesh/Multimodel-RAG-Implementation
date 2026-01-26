@@ -3,19 +3,24 @@
 from typing import TypedDict, List, Any
 from langgraph.graph import StateGraph, END
 
-from agents.modality_router_agent import route_modalities
+
 from agents.xray_agent import xray_agent
-from agents.ct_agent import ct_agent
-from agents.mri_agent import mri_agent
 from agents.evidence_aggregation_agent import aggregate_evidence
 from agents.clinical_reasoning_agent import clinical_reasoning_agent
 
 # NEW IMPORTS
-from agents.verifiers.router_verifier import RouterVerifier
 from agents.verifiers.evidence_quality_verifier import EvidenceQualityVerifier
 from agents.verifiers.response_refiner import ResponseRefiner
-from agents.quality_gates import RoutingQualityGate, EvidenceQualityGate, ResponseQualityGate
+from agents.quality_gates import EvidenceQualityGate, ResponseQualityGate
 
+XRAY_ONLY_MODE = True
+
+if not XRAY_ONLY_MODE:
+    from agents.modality_router_agent import route_modalities
+    from agents.ct_agent import ct_agent
+    from agents.mri_agent import mri_agent
+    from agents.verifiers.router_verifier import RouterVerifier
+    from agents.quality_gates import RoutingQualityGate
 
 class MMRAgState(TypedDict):
     patient_id: int
@@ -137,9 +142,16 @@ def routing_correction_node(state):
 # ============================================================
 
 def xray_node(state):
-    if "XRAY" in state["modalities"]:
-        return {"xray_results": xray_agent(state["patient_id"], state["query"])}
-    return {"xray_results": []}
+    # if "XRAY" in state["modalities"]:
+    #     return {"xray_results": xray_agent(state["patient_id"], state["query"])}
+    # return {"xray_results": []}
+
+    return {
+        "xray_results": xray_agent(
+            state["patient_id"],
+            state["query"]
+        )
+    }
 
 
 def ct_node(state):
@@ -163,8 +175,10 @@ def aggregation_node(state):
     print("[INFO] [Aggregation] Merging evidence...")
     
     evidence = aggregate_evidence(
-        state["xray_results"] + state["ct_results"] + state["mri_results"],
-        allowed_modalities=state["modalities"]
+        # state["xray_results"] + state["ct_results"] + state["mri_results"],
+        # allowed_modalities=state["modalities"]
+        state["xray_results"],  # ONLY XRAY
+        allowed_modalities=["XRAY"]
     )
     
     return {
@@ -328,17 +342,33 @@ def summary_node(state):
     """Generate final summary of quality and iterations"""
     print("\n[INFO] [Summary] Generating pipeline summary...")
     
+    # quality_scores = {
+    #     "routing": state.get("routing_gate_result", {}).get("score", 0),
+    #     "evidence": state.get("evidence_gate_result", {}).get("score", 0),
+    #     "response": state.get("response_gate_result", {}).get("score", 0)
+    # }
+
     quality_scores = {
-        "routing": state.get("routing_gate_result", {}).get("score", 0),
         "evidence": state.get("evidence_gate_result", {}).get("score", 0),
         "response": state.get("response_gate_result", {}).get("score", 0)
     }
+
+    if not XRAY_ONLY_MODE:
+        quality_scores["routing"] = state.get("routing_gate_result", {}).get("score", 0)
     
+    # total_iterations = (
+    #     state.get("routing_attempts", 0) +
+    #     state.get("retrieval_attempts", 0) +
+    #     state.get("reasoning_attempts", 0)
+    # )
+
     total_iterations = (
-        state.get("routing_attempts", 0) +
         state.get("retrieval_attempts", 0) +
         state.get("reasoning_attempts", 0)
     )
+
+    if not XRAY_ONLY_MODE:
+        total_iterations += state.get("routing_attempts", 0)
     
     return {
         "quality_scores": quality_scores,
@@ -356,15 +386,21 @@ def build_mmrag_graph():
     graph = StateGraph(MMRAgState)
 
     # ===== ROUTING STAGE =====
-    graph.add_node("router", router_node)
-    graph.add_node("router_verification", router_verification_node)
-    graph.add_node("routing_quality_gate", routing_quality_gate_node)
-    graph.add_node("routing_correction", routing_correction_node)
+    if not XRAY_ONLY_MODE:
+        graph.add_node("router", router_node)
+        graph.add_node("router_verification", router_verification_node)
+        graph.add_node("routing_quality_gate", routing_quality_gate_node)
+        graph.add_node("routing_correction", routing_correction_node)
     
     # ===== RETRIEVAL STAGE =====
+    # graph.add_node("xray", xray_node)
+    # graph.add_node("ct", ct_node)
+    # graph.add_node("mri", mri_node)
+
     graph.add_node("xray", xray_node)
-    graph.add_node("ct", ct_node)
-    graph.add_node("mri", mri_node)
+    if not XRAY_ONLY_MODE:
+        graph.add_node("ct", ct_node)
+        graph.add_node("mri", mri_node)
     
     # ===== EVIDENCE STAGE =====
     graph.add_node("aggregate", aggregation_node)
@@ -383,34 +419,42 @@ def build_mmrag_graph():
     # ===== DEFINE EDGES =====
     
     # Entry point
-    graph.set_entry_point("router")
+    # graph.set_entry_point("router")
+
+    if XRAY_ONLY_MODE:
+        graph.set_entry_point("xray")
+    else:
+        graph.set_entry_point("router")
     
     # Routing stage flow
-    graph.add_edge("router", "router_verification")
-    graph.add_edge("router_verification", "routing_quality_gate")
-    
-    # Routing decision
-    graph.add_conditional_edges(
-        "routing_quality_gate",
-        should_retry_routing,
-        {
-            "retry": "routing_correction",
-            "proceed": "xray"  # Start parallel retrieval
-        }
-    )
-    
-    # Routing correction loops back
-    graph.add_edge("routing_correction", "router")
-    
-    # Parallel retrieval (triggered from routing_quality_gate)
-    graph.add_edge("routing_quality_gate", "ct")
-    graph.add_edge("routing_quality_gate", "mri")
+    if not XRAY_ONLY_MODE:
+        graph.add_edge("router", "router_verification")
+        graph.add_edge("router_verification", "routing_quality_gate")
+
+        graph.add_conditional_edges(
+            "routing_quality_gate",
+            should_retry_routing,
+            {
+                "retry": "routing_correction",
+                "proceed": "xray"
+            }
+        )
+
+        graph.add_edge("routing_correction", "router")
+        graph.add_edge("routing_quality_gate", "ct")
+        graph.add_edge("routing_quality_gate", "mri")
     
     # Converge to aggregation
-    graph.add_edge("xray", "aggregate")
-    graph.add_edge("ct", "aggregate")
-    graph.add_edge("mri", "aggregate")
+    # graph.add_edge("xray", "aggregate")
+    # graph.add_edge("ct", "aggregate")
+    # graph.add_edge("mri", "aggregate")
     
+    graph.add_edge("xray", "aggregate")
+
+    if not XRAY_ONLY_MODE:
+        graph.add_edge("ct", "aggregate")
+        graph.add_edge("mri", "aggregate")
+
     # Evidence stage flow
     graph.add_edge("aggregate", "evidence_filter")
     graph.add_edge("evidence_filter", "evidence_quality_gate")
@@ -427,8 +471,9 @@ def build_mmrag_graph():
     
     # Retrieval adjustment loops back
     graph.add_edge("retrieval_adjustment", "xray")
-    graph.add_edge("retrieval_adjustment", "ct")
-    graph.add_edge("retrieval_adjustment", "mri")
+    if not XRAY_ONLY_MODE:
+        graph.add_edge("retrieval_adjustment", "ct")
+        graph.add_edge("retrieval_adjustment", "mri")
     
     # Reasoning stage flow
     graph.add_edge("reason", "response_quality_gate")

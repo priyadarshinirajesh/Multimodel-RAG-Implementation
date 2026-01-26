@@ -132,7 +132,8 @@ if run_button and query.strip():
         "query": query,
         
         # Routing
-        "modalities": [],
+        # "modalities": [],
+        "modalities": ["XRAY"],  # XRAY-only execution
         "routing_attempts": 0,
         "routing_verification": {},
         "routing_gate_result": {},
