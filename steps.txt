@@ -6,5 +6,12 @@
 6. python -m tests.test_patient_retrieval
 7. python streamlit run streamlit_app.py
 
+also create a .env file in agents/ folder to store GROQ_API_KEY (go to groqcloud and generate your api key)
+after creating the .env file 
+add the following line to the .env file
+
+GROQ_API_KEY=YOUR_GROQ_API_KEY
+
+
 
 
