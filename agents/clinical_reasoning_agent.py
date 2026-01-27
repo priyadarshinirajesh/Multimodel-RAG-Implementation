@@ -69,7 +69,10 @@ Supporting Evidence:
 Next Steps / Recommendations:
 - 1–2 bullets with [Rx]
 """
-
+    print("=== Prompt ===")
+    print(prompt)
+    print("==============")
+    
     headers = {
         "Authorization": f"Bearer {GROQ_API_KEY}",
         "Content-Type": "application/json"
