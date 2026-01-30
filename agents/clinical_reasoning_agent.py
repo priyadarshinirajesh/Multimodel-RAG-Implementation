@@ -50,7 +50,18 @@ def clinical_reasoning_agent(query: str, evidence: list):
     combined_evidence.extend(image_insights)
 
     prompt = f"""
-Use ONLY the evidence below.
+You are a clinical decision-support AI.
+
+ABSOLUTE RULES (MANDATORY):
+- Use ONLY the evidence provided below.
+- DO NOT infer, assume, or diagnose beyond evidence.
+- EVERY factual sentence MUST end with a citation.
+- If evidence is insufficient, explicitly write: "Insufficient evidence [Rx]".
+
+EVIDENCE USAGE RULES:
+- Prefer text reports over image descriptions when both exist.
+- Image insights are SUPPORTING only, not primary diagnostic proof.
+- Ignore modalities that are clinically irrelevant to the question.
 
 Retrieved Clinical Evidence:
 {chr(10).join(combined_evidence)}

@@ -79,19 +79,7 @@ def image_insight_agent_llava_med(evidence: list, query: str) -> list:
         # FORCED ANATOMICAL PROMPT
         # -------------------------------
         prompt = f"""
-You are a radiology assistant analyzing a chest X-ray image.
-TASK:
-Describe visible anatomical findings in the chest X-ray in a neutral, observational manner.
-CLINICAL CONTEXT:
-The clinical question is:
-"{query}"
-
-YOU SHOULD DESCRIBE ABOUT:
-- Lung fields (symmetry, opacities, markings)
-- Cardiac silhouette (size, contour)
-- Pleura and costophrenic angles (sharpness, contour, blunting)
-- Mediastinum and diaphragm (contours, position)
-
+Describe visible anatomical findings in the chest X-ray in a neutral, observational manner based on the clinical query provided : "{query}"
 """
 
         payload = {
@@ -104,42 +92,12 @@ YOU SHOULD DESCRIBE ABOUT:
             }
         }
 
-        try:
-            response = requests.post(OLLAMA_URL, json=payload, timeout=120)
-            response.raise_for_status()
+        
+        response = requests.post(OLLAMA_URL, json=payload, timeout=120)
+        response.raise_for_status()
 
-            raw = response.json().get("response", "").strip()
+        insight = response.json()["response"]
 
-            if not raw:
-                raise ValueError("Empty response")
-
-            raw = sanitize_insight(raw)
-
-            # -------------------------------
-            # Graded fallback: fill missing anatomy
-            # -------------------------------
-            required_sections = [
-                "Lung fields:",
-                "Cardiac silhouette:",
-                "Pleura / costophrenic angles:",
-                "Mediastinum / diaphragm:"
-            ]
-
-            for section in required_sections:
-                if section not in raw:
-                    raw += f"\n{section} appears unremarkable."
-
-            image_insights.append(f"[R{idx}-IMAGE]\n{raw}")
-
-            logger.debug(f"[LLaVA-Med] Image {idx} insight generated")
-
-        except Exception as ex:
-            logger.warning(f"[LLaVA-Med] Fallback used for image {idx}: {ex}")
-            image_insights.append(
-                f"[R{idx}-IMAGE] Lung fields: unremarkable. "
-                f"Cardiac silhouette: unremarkable. "
-                f"Pleura / costophrenic angles: unremarkable. "
-                f"Mediastinum / diaphragm: unremarkable."
-            )
+        image_insights.append(f"[R{idx}-IMAGE] {insight}")
 
     return image_insights
