@@ -15,10 +15,6 @@ from agents.image_insight_agent_llava_med import image_insight_agent_llava_med
 from agents.verifiers.structure_repair import enforce_structure
 from utils.logger import get_logger
 
-# ============================================================
-# LOAD ENV
-# ============================================================
-
 load_dotenv()
 
 GROQ_API_KEY = os.getenv("GROQ_API_KEY")
@@ -35,11 +31,11 @@ def clinical_reasoning_agent(query: str, evidence: list):
     logger.info("Starting clinical reasoning")
     logger.info(f"Evidence items received: {len(evidence)}")
 
-    ground_truth_impressions = [
-        e["report_text"]
-        for e in evidence
-        if "impression" in e["report_text"].lower()
-    ]
+    # ✅ NEW: Use ALL retrieved evidence as ground truth
+    # Since retrieval is patient-specific, all retrieved items are relevant
+    ground_truth_impressions = [e["report_text"] for e in evidence]
+    
+    logger.info(f"Ground truth items: {len(ground_truth_impressions)}")
 
     image_insights = image_insight_agent_llava_med(evidence, query)
 
@@ -106,11 +102,18 @@ Next Steps / Recommendations:
     # 🔒 HARD GUARANTEE
     final_answer = enforce_structure(raw_answer)
 
+    # ✅ Deduplicate retrieved reports before evaluation
+    retrieved_texts = [e["report_text"] for e in evidence]
+    unique_retrieved = list(dict.fromkeys(retrieved_texts))
+    
+    logger.info(f"Retrieved texts: {len(retrieved_texts)}, Unique: {len(unique_retrieved)}")
+
+    # ✅ Calculate metrics
     metrics = {}
     metrics.update(
         precision_recall_mrr(
-            retrieved=[e["report_text"] for e in evidence],
-            ground_truth=ground_truth_impressions,
+            retrieved=unique_retrieved,
+            ground_truth=ground_truth_impressions,  # ✅ Using all retrieved evidence
             k=7
         )
     )

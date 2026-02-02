@@ -1,3 +1,17 @@
+# def role_compliance(answer):
+#     violations = [
+#         "definitely has",
+#         "confirmed diagnosis",
+#         "guaranteed",
+#         "without doubt"
+#     ]
+
+#     for v in violations:
+#         if v.lower() in answer.lower():
+#             return 0  # Non-compliant
+
+#     return 1  # Compliant
+
 # evaluation/diagnosis_evaluator.py
 
 from sentence_transformers import SentenceTransformer
@@ -14,7 +28,10 @@ def precision_recall_mrr(retrieved, ground_truth, k=7):
     # True positives = unique relevant items retrieved
     tp = len(retrieved_unique & relevant)
 
-    precision = tp / len(retrieved_k) if retrieved_k else 0
+    # ✅ FIX: Use actual retrieved count or k, whichever is smaller
+    actual_k = min(k, len(retrieved_k))
+
+    precision = tp / actual_k if actual_k > 0 else 0  # ✅ FIXED
     recall = tp / len(relevant) if relevant else 0
 
     # MRR: first relevant hit
@@ -30,22 +47,6 @@ def precision_recall_mrr(retrieved, ground_truth, k=7):
         "MRR": round(mrr, 3)
     }
 
-
-
-
-# def role_compliance(answer):
-#     violations = [
-#         "definitely has",
-#         "confirmed diagnosis",
-#         "guaranteed",
-#         "without doubt"
-#     ]
-
-#     for v in violations:
-#         if v.lower() in answer.lower():
-#             return 0  # Non-compliant
-
-#     return 1  # Compliant
 
 def groundedness(answer):
     import re
@@ -74,7 +75,6 @@ def groundedness(answer):
     return round(supported / len(factual_lines), 3)
 
 
-
 def clinical_correctness(answer, impressions, threshold=0.55):
     if not impressions:
         return 0
@@ -84,8 +84,7 @@ def clinical_correctness(answer, impressions, threshold=0.55):
 
     sims = cosine_similarity(answer_emb, imp_embs)[0]
 
-    #return 1 if max(sims) >= threshold else 0
-    return max(sims)
+    return float(max(sims))
 
 
 def completeness(answer):
@@ -104,8 +103,4 @@ def completeness(answer):
         score += 1
 
     return round(score / 3, 2)
-
-
-
-
 
