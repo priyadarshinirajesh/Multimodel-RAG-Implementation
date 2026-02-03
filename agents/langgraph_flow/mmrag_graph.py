@@ -30,6 +30,7 @@ from agents.quality_gates import EvidenceQualityGate, ResponseQualityGate
 class MMRAgState(TypedDict):
     patient_id: int
     query: str
+    user_role: str  # 🆕 NEW - add this line
 
     xray_results: List[Any]
     evidence: List[Any]
@@ -55,7 +56,6 @@ class MMRAgState(TypedDict):
     total_iterations: int
     quality_scores: dict
 
-
 # =========================
 # NODES
 # =========================
@@ -69,12 +69,15 @@ def xray_contract_node(state):
 
 
 def aggregation_node(state):
-    evidence = aggregate_evidence(state["xray_results"], allowed_modalities=["XRAY"])
+    evidence = aggregate_evidence(
+        state["xray_results"], 
+        allowed_modalities=["XRAY"],
+        user_role=state.get("user_role", "doctor")  # 🆕 Pass user_role
+    )
     return {
         "evidence": evidence,
         "retrieval_attempts": state.get("retrieval_attempts", 0) + 1
     }
-
 
 def evidence_quality_filter_node(state):
     verifier = EvidenceQualityVerifier()
@@ -112,7 +115,8 @@ def evidence_consistency_node(state):
 def reasoning_node(state):
     result = clinical_reasoning_agent(
         state["query"],
-        state["filtered_evidence"]
+        state["filtered_evidence"],
+        user_role=state.get("user_role", "doctor")  # 🆕 Pass user_role
     )
     return {
         "final_answer": result["final_answer"],

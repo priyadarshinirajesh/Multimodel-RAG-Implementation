@@ -71,6 +71,21 @@ st.markdown('<div class="sub-header">AI-powered clinical reasoning with Quality 
 with st.sidebar:
     st.header("⚙️ Configuration")
     
+    # 🆕 NEW: Role-Based Access Control
+    st.subheader("👤 User Role")
+    user_role = st.selectbox(
+        "Select your role",
+        options=["doctor", "nurse", "patient"],
+        index=0,
+        help="""
+        - Doctor: Full clinical access
+        - Nurse: Care-focused view (no images)
+        - Patient: Simplified, layman language
+        """
+    )
+    
+    st.markdown("---")
+    
     st.subheader("Quality Thresholds")
     # routing_threshold = st.slider("Routing Quality", 0.0, 1.0, 0.8, 0.05)
     evidence_threshold = st.slider("Evidence Quality", 0.0, 1.0, 0.6, 0.05)
@@ -130,6 +145,7 @@ if run_button and query.strip():
         initial_state = {
         "patient_id": int(patient_id),
         "query": query,
+        "user_role": user_role,  # 🆕 NEW - add this line
         
         # Routing
         # "modalities": [],
@@ -173,6 +189,13 @@ if run_button and query.strip():
     
     st.markdown("---")
     st.header("📊 Pipeline Execution Summary")
+
+    role_display = {
+        "doctor": "👨‍⚕️ Doctor (Full Access)",
+        "nurse": "👩‍⚕️ Nurse (Care-Focused View)",
+        "patient": "🧑‍🦱 Patient (Simplified View)"
+    }
+    st.info(f"**Active Role:** {role_display.get(user_role, user_role)}")
     
     # Top-level metrics
     col1, col2, col3 = st.columns(3)

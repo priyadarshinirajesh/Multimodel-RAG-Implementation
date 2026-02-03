@@ -27,17 +27,21 @@ MODEL_NAME = "llama-3.1-8b-instant"
 logger = get_logger("ReasoningAgent")
 
 
-def clinical_reasoning_agent(query: str, evidence: list):
-    logger.info("Starting clinical reasoning")
+def clinical_reasoning_agent(query: str, evidence: list, user_role: str = "doctor"):  # 🆕 Added user_role
+    logger.info(f"Starting clinical reasoning for role: {user_role}")
     logger.info(f"Evidence items received: {len(evidence)}")
 
     # ✅ NEW: Use ALL retrieved evidence as ground truth
-    # Since retrieval is patient-specific, all retrieved items are relevant
     ground_truth_impressions = [e["report_text"] for e in evidence]
     
     logger.info(f"Ground truth items: {len(ground_truth_impressions)}")
 
-    image_insights = image_insight_agent_llava_med(evidence, query)
+    # 🆕 NEW: Skip image analysis for nurses (they don't have image access)
+    if user_role == "nurse":
+        logger.info("[RBAC] Nurse role - skipping image analysis")
+        image_insights = []
+    else:
+        image_insights = image_insight_agent_llava_med(evidence, query)
 
     combined_evidence = [
         f"[R{i}] ({e['modality']}) {e['report_text']}"
@@ -45,8 +49,16 @@ def clinical_reasoning_agent(query: str, evidence: list):
     ]
     combined_evidence.extend(image_insights)
 
+    # 🆕 NEW: Role-specific system prompts
+    system_prompt = get_role_specific_system_prompt(user_role)
+    
+    # 🆕 NEW: Role-specific instructions
+    role_instructions = get_role_specific_instructions(user_role)
+
     prompt = f"""
 You are a clinical decision-support AI.
+
+{role_instructions}
 
 ABSOLUTE RULES (MANDATORY):
 - Use ONLY the evidence provided below.
@@ -76,9 +88,6 @@ Supporting Evidence:
 Next Steps / Recommendations:
 - 1–2 bullets with [Rx]
 """
-    print("=== Prompt ===")
-    print(prompt)
-    print("==============")
     
     headers = {
         "Authorization": f"Bearer {GROQ_API_KEY}",
@@ -89,7 +98,7 @@ Next Steps / Recommendations:
         "model": MODEL_NAME,
         "temperature": 0.0,
         "messages": [
-            {"role": "system", "content": "You generate strict clinical reports."},
+            {"role": "system", "content": system_prompt},  # 🆕 Role-specific system prompt
             {"role": "user", "content": prompt}
         ]
     }
@@ -113,7 +122,7 @@ Next Steps / Recommendations:
     metrics.update(
         precision_recall_mrr(
             retrieved=unique_retrieved,
-            ground_truth=ground_truth_impressions,  # ✅ Using all retrieved evidence
+            ground_truth=ground_truth_impressions,
             k=7
         )
     )
@@ -128,3 +137,57 @@ Next Steps / Recommendations:
         "final_answer": final_answer,
         "metrics": metrics
     }
+
+
+# 🆕 NEW: Helper functions for role-specific prompts
+
+def get_role_specific_system_prompt(role: str) -> str:
+    """Returns appropriate system prompt based on user role"""
+    
+    if role == "doctor":
+        return "You are a clinical decision-support AI for medical professionals. Provide detailed, evidence-based clinical reasoning."
+    
+    elif role == "nurse":
+        return "You are a care-focused AI assistant for nursing staff. Provide clear, actionable information for patient care delivery. Avoid detailed diagnostic reasoning - focus on observations and care instructions."
+    
+    elif role == "patient":
+        return "You are a patient education AI. Use simple, non-technical language. Explain findings in a way that is easy to understand. Avoid medical jargon and complex diagnostic terminology."
+    
+    else:
+        return "You are a clinical decision-support AI."
+
+
+def get_role_specific_instructions(role: str) -> str:
+    """Returns role-specific instructions for the prompt"""
+    
+    if role == "doctor":
+        return """
+DOCTOR MODE:
+- Provide complete clinical reasoning
+- Include all diagnostic considerations
+- Use standard medical terminology
+- Reference specific anatomical findings
+"""
+    
+    elif role == "nurse":
+        return """
+NURSE MODE:
+- Focus on observable findings and care implications
+- Use clear, practical language
+- Emphasize what needs to be monitored or reported
+- DO NOT provide diagnostic conclusions
+- Frame findings in terms of care actions
+"""
+    
+    elif role == "patient":
+        return """
+PATIENT MODE:
+- Use SIMPLE, everyday language
+- Explain medical terms when you must use them
+- Focus on what the findings mean in practical terms
+- Avoid frightening or overly technical descriptions
+- Be reassuring where appropriate while remaining truthful
+"""
+    
+    else:
+        return ""

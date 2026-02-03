@@ -1,11 +1,12 @@
 # agents/evidence_aggregation_agent.py
 
 from utils.logger import get_logger
+from agents.rbac_filter import apply_rbac_filter
 
 logger = get_logger("EvidenceAggregator")
 
 
-def aggregate_evidence(results, allowed_modalities=None):
+def aggregate_evidence(results, allowed_modalities=None,user_role="doctor"):
     evidence = []
 
     logger.info(
@@ -58,4 +59,11 @@ def aggregate_evidence(results, allowed_modalities=None):
         f"[EvidenceAggregator] Final evidence count: {len(evidence)}"
     )
 
-    return evidence
+    #  NEW: Apply RBAC filtering
+    filtered_evidence = apply_rbac_filter(evidence, user_role)
+    
+    logger.info(
+        f"[EvidenceAggregator] Final evidence count after RBAC: {len(filtered_evidence)}"
+    )
+
+    return filtered_evidence  #  Return RBAC-filtered evidence
