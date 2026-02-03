@@ -54,6 +54,43 @@ st.markdown("""
         padding-left: 1rem;
         margin: 1rem 0;
     }
+    .role-row {
+        display: flex;
+        gap: 12px;
+        margin-bottom: 8px;
+    }
+    .role-card {
+        flex: 1;
+        border: 2px solid #dee2e6;
+        border-radius: 10px;
+        padding: 14px 10px;
+        text-align: center;
+        cursor: pointer;
+        background: #1e1e2e;
+        color: #cdd6f4;
+        transition: all 0.2s;
+    }
+    .role-card:hover {
+        border-color: #1f77b4;
+    }
+    .role-card.active-doctor {
+        border-color: #4a9eff;
+        background: #1a2332;
+        box-shadow: 0 0 8px rgba(74,158,255,0.4);
+    }
+    .role-card.active-nurse {
+        border-color: #f0c040;
+        background: #2a2518;
+        box-shadow: 0 0 8px rgba(240,192,64,0.4);
+    }
+    .role-card.active-patient {
+        border-color: #5dd4c4;
+        background: #182a28;
+        box-shadow: 0 0 8px rgba(93,212,196,0.4);
+    }
+    .role-card .role-icon { font-size: 1.8rem; }
+    .role-card .role-label { font-weight: bold; font-size: 0.95rem; margin-top: 4px; }
+    .role-card .role-desc { font-size: 0.78rem; color: #888; margin-top: 4px; }
 </style>
 """, unsafe_allow_html=True)
 
@@ -65,41 +102,25 @@ st.markdown('<div class="main-header">🧠 Multimodal Clinical Decision Support 
 st.markdown('<div class="sub-header">AI-powered clinical reasoning with Quality Gates & Local Feedback Loops</div>', unsafe_allow_html=True)
 
 # ============================================================
-# SIDEBAR - CONFIGURATION
+# SIDEBAR — thresholds & retries only
 # ============================================================
 
 with st.sidebar:
     st.header("⚙️ Configuration")
-    
-    # 🆕 NEW: Role-Based Access Control
-    st.subheader("👤 User Role")
-    user_role = st.selectbox(
-        "Select your role",
-        options=["doctor", "nurse", "patient"],
-        index=0,
-        help="""
-        - Doctor: Full clinical access
-        - Nurse: Care-focused view (no images)
-        - Patient: Simplified, layman language
-        """
-    )
-    
-    st.markdown("---")
-    
+
     st.subheader("Quality Thresholds")
-    # routing_threshold = st.slider("Routing Quality", 0.0, 1.0, 0.8, 0.05)
     evidence_threshold = st.slider("Evidence Quality", 0.0, 1.0, 0.6, 0.05)
     response_threshold = st.slider("Response Quality", 0.0, 1.0, 0.7, 0.05)
-    
+
     st.subheader("Retry Limits")
-    # max_routing_retries = st.number_input("Max Routing Retries", 1, 5, 2)
     max_retrieval_retries = st.number_input("Max Retrieval Retries", 1, 5, 2)
     max_reasoning_retries = st.number_input("Max Reasoning Retries", 1, 5, 2)
-    
+
     st.markdown("---")
     st.markdown("**ℹ️ About**")
     st.markdown("""
     This system uses:
+    - Role-Based Access Control
     - Local feedback loops
     - Quality gates between stages
     - Evidence pre-filtering
@@ -107,7 +128,62 @@ with st.sidebar:
     """)
 
 # ============================================================
-# MAIN CONTENT - INPUT
+# ROLE SELECTOR — on main page, always visible
+# ============================================================
+
+st.markdown("---")
+st.subheader("👤 Select Your Role")
+
+# Track role in session_state so clicking a button persists it
+if "user_role" not in st.session_state:
+    st.session_state["user_role"] = "doctor"
+
+role_col1, role_col2, role_col3 = st.columns(3)
+
+with role_col1:
+    doctor_active = "active-doctor" if st.session_state["user_role"] == "doctor" else ""
+    st.markdown(f"""
+    <div class="role-card {doctor_active}">
+        <div class="role-icon">👨‍⚕️</div>
+        <div class="role-label">Doctor</div>
+        <div class="role-desc">Full clinical access — reports, images, detailed reasoning</div>
+    </div>
+    """, unsafe_allow_html=True)
+    if st.button("Select Doctor", key="btn_doctor", use_container_width=True):
+        st.session_state["user_role"] = "doctor"
+        st.rerun()
+
+with role_col2:
+    nurse_active = "active-nurse" if st.session_state["user_role"] == "nurse" else ""
+    st.markdown(f"""
+    <div class="role-card {nurse_active}">
+        <div class="role-icon">👩‍⚕️</div>
+        <div class="role-label">Nurse</div>
+        <div class="role-desc">Care-focused — findings only, no images, practical language</div>
+    </div>
+    """, unsafe_allow_html=True)
+    if st.button("Select Nurse", key="btn_nurse", use_container_width=True):
+        st.session_state["user_role"] = "nurse"
+        st.rerun()
+
+with role_col3:
+    patient_active = "active-patient" if st.session_state["user_role"] == "patient" else ""
+    st.markdown(f"""
+    <div class="role-card {patient_active}">
+        <div class="role-icon">🧑</div>
+        <div class="role-label">Patient</div>
+        <div class="role-desc">Simplified — plain language, your images, no jargon</div>
+    </div>
+    """, unsafe_allow_html=True)
+    if st.button("Select Patient", key="btn_patient", use_container_width=True):
+        st.session_state["user_role"] = "patient"
+        st.rerun()
+
+# Pull the confirmed role out
+user_role = st.session_state["user_role"]
+
+# ============================================================
+# INPUT
 # ============================================================
 
 st.markdown("---")
@@ -137,108 +213,89 @@ run_button = st.button("🔬 Run Analysis", type="primary", use_container_width=
 # ============================================================
 
 if run_button and query.strip():
-    
+
     with st.spinner("🔄 Running multi-agent pipeline with quality gates..."):
-        
+
         graph = build_mmrag_graph()
-        
+
         initial_state = {
-        "patient_id": int(patient_id),
-        "query": query,
-        "user_role": user_role,  # 🆕 NEW - add this line
-        
-        # Routing
-        # "modalities": [],
-        "modalities": ["XRAY"],  # XRAY-only execution
-        # "routing_attempts": 0,
-        "routing_verification": {},
-        "routing_gate_result": {},
-        
-        # Retrieval
-        "xray_results": [],
-        "ct_results": [],
-        "mri_results": [],
-        
-        # Evidence
-        "evidence": [],
-        "filtered_evidence": [],
-        "evidence_filter_result": {},
-        "evidence_gate_result": {},
-        "retrieval_attempts": 0,
-        
-        # Reasoning
-        "final_answer": "",
-        "metrics": {},
-        "response_gate_result": {},
-        "refinement_result": {},
-        "reasoning_attempts": 0,
-        "refinement_count": 0,  # ADD THIS LINE
-        
-        # Global
-        "total_iterations": 0,
-        "quality_scores": {}
-    }
-        
+            "patient_id": int(patient_id),
+            "query": query,
+            "user_role": user_role,
+
+            # Routing
+            "modalities": ["XRAY"],
+            "routing_verification": {},
+            "routing_gate_result": {},
+
+            # Retrieval
+            "xray_results": [],
+            "ct_results": [],
+            "mri_results": [],
+
+            # Evidence
+            "evidence": [],
+            "filtered_evidence": [],
+            "evidence_filter_result": {},
+            "evidence_gate_result": {},
+            "retrieval_attempts": 0,
+
+            # Reasoning
+            "final_answer": "",
+            "metrics": {},
+            "response_gate_result": {},
+            "refinement_result": {},
+            "reasoning_attempts": 0,
+            "refinement_count": 0,
+
+            # Global
+            "total_iterations": 0,
+            "quality_scores": {}
+        }
+
         final_state = graph.invoke(initial_state)
-    
+
     st.success("✅ Pipeline completed!")
-    
+
     # ============================================================
-    # RESULTS - PIPELINE SUMMARY
+    # PIPELINE SUMMARY
     # ============================================================
-    
+
     st.markdown("---")
     st.header("📊 Pipeline Execution Summary")
 
     role_display = {
         "doctor": "👨‍⚕️ Doctor (Full Access)",
         "nurse": "👩‍⚕️ Nurse (Care-Focused View)",
-        "patient": "🧑‍🦱 Patient (Simplified View)"
+        "patient": "🧑 Patient (Simplified View)"
     }
     st.info(f"**Active Role:** {role_display.get(user_role, user_role)}")
-    
-    # Top-level metrics
+
     col1, col2, col3 = st.columns(3)
-    
+
     with col1:
         total_iterations = final_state.get('total_iterations', 0)
         st.metric("Total Iterations", total_iterations)
-    
-    # with col2:
-    #     routing_attempts = final_state.get('routing_attempts', 0)
-    #     st.metric("Routing Attempts", routing_attempts)
-    
+
     with col2:
         retrieval_attempts = final_state.get('retrieval_attempts', 0)
         st.metric("Retrieval Attempts", retrieval_attempts)
-    
+
     with col3:
         reasoning_attempts = final_state.get('reasoning_attempts', 0)
         st.metric("Reasoning Attempts", reasoning_attempts)
-    
+
     # ============================================================
-    # QUALITY GATES RESULTS
+    # QUALITY GATES
     # ============================================================
-    
+
     st.markdown("---")
     st.header("✅ Quality Gate Results")
-    
+
     quality_scores = final_state.get('quality_scores', {})
-    
+
     col1, col2, col3 = st.columns(3)
-    
-    # with col1:
-    #     routing_score = quality_scores.get('routing', 0)
-    #     st.metric(
-    #         "Routing Quality",
-    #         f"{routing_score:.2f}",
-    #         delta=f"{routing_score - routing_threshold:.2f}" if routing_score else None
-    #     )
-    #     if routing_score >= routing_threshold:
-    #         st.markdown('<div class="quality-badge-pass">✅ PASS</div>', unsafe_allow_html=True)
-    #     else:
-    #         st.markdown('<div class="quality-badge-fail">⚠️ ATTENTION</div>', unsafe_allow_html=True)
-    
+
     with col1:
         evidence_score = quality_scores.get('evidence', 0)
         st.metric(
@@ -250,7 +307,7 @@ if run_button and query.strip():
             st.markdown('<div class="quality-badge-pass">✅ PASS</div>', unsafe_allow_html=True)
         else:
             st.markdown('<div class="quality-badge-fail">⚠️ ATTENTION</div>', unsafe_allow_html=True)
-    
+
     with col2:
         response_score = quality_scores.get('response', 0)
         st.metric(
@@ -262,7 +319,7 @@ if run_button and query.strip():
             st.markdown('<div class="quality-badge-pass">✅ PASS</div>', unsafe_allow_html=True)
         else:
             st.markdown('<div class="quality-badge-fail">⚠️ ATTENTION</div>', unsafe_allow_html=True)
-    
+
     with col3:
         avg_quality = (
             (quality_scores.get("evidence", 0) + quality_scores.get("response", 0)) / 2
@@ -274,72 +331,62 @@ if run_button and query.strip():
             st.markdown('<div class="quality-badge-pass">✅ GOOD</div>', unsafe_allow_html=True)
         else:
             st.markdown('<div class="quality-badge-fail">⚠️ NEEDS REVIEW</div>', unsafe_allow_html=True)
-    
+
     # ============================================================
-    # STAGE-BY-STAGE BREAKDOWN
+    # STAGE BREAKDOWN
     # ============================================================
-    
+
     st.markdown("---")
     st.header("🔄 Stage-by-Stage Breakdown")
-    
-    # # Stage 1: Routing
-    # with st.expander("**Stage 1: Routing** 🧭", expanded=False):
-    #     routing_gate = final_state.get('routing_gate_result', {})
-    #     routing_verification = final_state.get('routing_verification', {})
-        
-    #     col1, col2 = st.columns(2)
-        
-    #     with col1:
-    #         st.markdown("**Selected Modalities:**")
-    #         selected_mods = final_state.get('modalities', [])
-    #         for mod in selected_mods:
-    #             st.markdown(f"- {mod}")
-        
-    #     with col2:
-    #         st.markdown("**Verification Result:**")
-    #         st.write(f"Confidence: {routing_verification.get('confidence', 0):.2f}")
-    #         st.write(f"Decision: {routing_gate.get('decision', 'N/A')}")
-    #         if routing_gate.get('feedback'):
-    #             st.info(routing_gate['feedback'])
-    
-    # Stage 2: Evidence Retrieval
-    with st.expander("**Stage 2: Evidence Retrieval** 🔍", expanded=False):
+
+    # Stage 1: Evidence Retrieval
+    with st.expander("**Stage 1: Evidence Retrieval** 🔍", expanded=False):
         evidence_gate = final_state.get('evidence_gate_result', {})
         filter_result = final_state.get('evidence_filter_result', {})
-        
+
         col1, col2, col3 = st.columns(3)
-        
+
         with col1:
             original_count = len(final_state.get('evidence', []))
             st.metric("Original Evidence", original_count)
-        
+
         with col2:
             filtered_count = len(final_state.get('filtered_evidence', []))
             st.metric("Filtered Evidence", filtered_count)
-        
+
         with col3:
             removed_count = filter_result.get('removed_count', 0)
             st.metric("Removed", removed_count, delta=f"-{removed_count}")
-        
+
         st.markdown("**Filter Quality:**")
         st.write(f"Quality Score: {filter_result.get('quality_score', 0):.2f}")
         st.write(f"Gate Decision: {evidence_gate.get('decision', 'N/A')}")
-        
+
         if filter_result.get('feedback'):
             st.info(filter_result['feedback'])
-    
+
+    # Stage 2: RBAC
+    with st.expander("**Stage 2: RBAC Access Control** 🔐", expanded=False):
+        st.markdown(f"**Active Role:** {role_display.get(user_role, user_role)}")
+        if user_role == "doctor":
+            st.success("✅ Full access — all evidence, images, and clinical reasoning enabled.")
+        elif user_role == "nurse":
+            st.warning("⚠️ Nurse view — image analysis skipped. Only Findings sections shown. Diagnostic conclusions removed.")
+        elif user_role == "patient":
+            st.info("ℹ️ Patient view — medical terms simplified. Images visible. Impression sections removed.")
+
     # Stage 3: Clinical Reasoning
     with st.expander("**Stage 3: Clinical Reasoning** 🧠", expanded=False):
         response_gate = final_state.get('response_gate_result', {})
         refinement = final_state.get('refinement_result', {})
-        
+
         col1, col2 = st.columns(2)
-        
+
         with col1:
             st.markdown("**Response Quality:**")
             st.write(f"Score: {response_gate.get('score', 0):.2f}")
             st.write(f"Decision: {response_gate.get('decision', 'N/A')}")
-        
+
         with col2:
             if refinement:
                 st.markdown("**Refinements Applied:**")
@@ -349,61 +396,57 @@ if run_button and query.strip():
                         st.markdown(f"- {ref.replace('_', ' ').title()}")
                 else:
                     st.write("No refinements needed")
-    
+
     # ============================================================
     # RETRIEVED EVIDENCE
     # ============================================================
-    
+
     st.markdown("---")
     st.header("🔎 Retrieved Evidence")
-    
+
     filtered_evidence = final_state.get("filtered_evidence", [])
-    
+
     if not filtered_evidence:
         st.warning("⚠️ No relevant evidence found")
     else:
         st.success(f"✅ Found {len(filtered_evidence)} relevant evidence items")
-        
-        # Evidence statistics
+
         modality_counts = {}
         for e in filtered_evidence:
             mod = e.get('modality', 'Unknown')
             modality_counts[mod] = modality_counts.get(mod, 0) + 1
-        
+
         st.markdown("**Evidence by Modality:**")
         cols = st.columns(len(modality_counts))
         for col, (mod, count) in zip(cols, modality_counts.items()):
             col.metric(mod, count)
-        
+
         st.markdown("---")
-        
-        # Display each evidence item
+
         for idx, e in enumerate(filtered_evidence, start=1):
             with st.expander(f"**Evidence {idx}** — {e.get('modality', 'N/A')} (Relevance: {e.get('relevance_score', 0):.2f})"):
-                
+
                 col1, col2 = st.columns([2, 1])
-                
+
                 with col1:
                     st.markdown("**Report Text:**")
                     st.write(e.get('report_text', 'N/A'))
-                    
                     st.markdown(f"**Organ:** {e.get('organ', 'N/A')}")
                     st.markdown(f"**Modality:** {e.get('modality', 'N/A')}")
-                
+
                 with col2:
-                    if e.get('image_path') and os.path.exists(e['image_path']):
+                    # RBAC: nurses have has_image=False from rbac_filter
+                    if e.get('has_image') and e.get('image_path') and os.path.exists(e['image_path']):
                         try:
                             img = Image.open(e['image_path'])
-                            st.image(
-                                img,
-                                caption=f"Image {idx}",
-                                use_container_width=True
-                            )
+                            st.image(img, caption=f"Image {idx}", use_container_width=True)
                         except Exception as ex:
                             st.warning(f"Unable to display image: {ex}")
+                    elif user_role == "nurse":
+                        st.info("🔐 Image access restricted for Nurse role")
                     else:
                         st.info("No image available")
-    
+
     # ============================================================
     # FINAL CLINICAL RESPONSE
     # ============================================================
@@ -413,7 +456,6 @@ if run_button and query.strip():
 
     final_answer = final_state.get("final_answer", "No response generated")
 
-    # Parse the response into sections
     sections = {
         "diagnosis": "",
         "evidence": "",
@@ -425,7 +467,7 @@ if run_button and query.strip():
 
     for line in lines:
         line_lower = line.lower().strip()
-        
+
         if 'diagnosis' in line_lower or 'impression' in line_lower:
             current_section = "diagnosis"
             continue
@@ -435,11 +477,10 @@ if run_button and query.strip():
         elif 'next steps' in line_lower or 'recommendation' in line_lower:
             current_section = "recommendations"
             continue
-        
+
         if current_section and line.strip():
             sections[current_section] += line + "\n"
 
-    # Display in organized format
     if sections["diagnosis"]:
         st.markdown("**Diagnosis / Impression:**")
         st.info(sections["diagnosis"].strip())
@@ -456,7 +497,6 @@ if run_button and query.strip():
         for rec_line in rec_lines:
             st.markdown(rec_line)
 
-    # If parsing failed, show raw response
     if not any(sections.values()):
         st.markdown(
             f"""
@@ -467,45 +507,43 @@ if run_button and query.strip():
             unsafe_allow_html=True
         )
 
-    # Show refinement info if applicable
     refinement = final_state.get('refinement_result', {})
     if refinement and refinement.get('refinements_applied'):
         st.info(f"ℹ️ This response was refined through {refinement.get('iterations', 0)} stages: {', '.join(refinement.get('refinements_applied', []))}")
-        
+
     # ============================================================
     # EVALUATION METRICS
     # ============================================================
-    
+
     st.markdown("---")
     st.header("📈 Evaluation Metrics")
-    
+
     metrics = final_state.get("metrics", {})
-    
+
     if metrics:
         metric_cols = st.columns(len(metrics))
-        
         for col, (k, v) in zip(metric_cols, metrics.items()):
             col.metric(label=k, value=f"{v:.3f}" if isinstance(v, float) else v)
     else:
         st.warning("No evaluation metrics available")
-    
+
     # ============================================================
-    # DOWNLOAD OPTIONS
+    # EXPORT
     # ============================================================
-    
+
     st.markdown("---")
     st.header("💾 Export Results")
-    
+
     col1, col2 = st.columns(2)
-    
+
     with col1:
-        # Export as text
         export_text = f"""
 CLINICAL DECISION SUPPORT REPORT
 {'='*60}
 
 Patient ID: {patient_id}
 Query: {query}
+Role: {user_role}
 
 PIPELINE SUMMARY
 {'-'*60}
@@ -527,20 +565,18 @@ EVALUATION METRICS
 {'-'*60}
 {chr(10).join([f'{k}: {v}' for k, v in metrics.items()])}
 """
-        
+
         st.download_button(
             label="📄 Download as Text",
             data=export_text,
-            file_name=f"clinical_report_patient_{patient_id}.txt",
+            file_name=f"clinical_report_patient_{patient_id}_{user_role}.txt",
             mime="text/plain"
         )
-    
+
     with col2:
-        # Export as JSON
         import json
         import numpy as np
-        
-        # Helper function to convert numpy types to Python types
+
         def convert_to_serializable(obj):
             if isinstance(obj, np.floating):
                 return float(obj)
@@ -551,17 +587,16 @@ EVALUATION METRICS
             elif isinstance(obj, list):
                 return [convert_to_serializable(item) for item in obj]
             return obj
-        
-        # Convert metrics to serializable format
+
         serializable_metrics = convert_to_serializable(metrics)
         serializable_quality_scores = convert_to_serializable(quality_scores)
-        
+
         export_json = json.dumps({
             "patient_id": patient_id,
             "query": query,
+            "user_role": user_role,
             "pipeline_summary": {
                 "total_iterations": int(total_iterations),
-                # "routing_attempts": int(routing_attempts),
                 "retrieval_attempts": int(retrieval_attempts),
                 "reasoning_attempts": int(reasoning_attempts)
             },
@@ -570,33 +605,31 @@ EVALUATION METRICS
             "metrics": serializable_metrics,
             "evidence_count": len(filtered_evidence)
         }, indent=2)
-        
+
         st.download_button(
             label="📊 Download as JSON",
             data=export_json,
-            file_name=f"clinical_report_patient_{patient_id}.json",
+            file_name=f"clinical_report_patient_{patient_id}_{user_role}.json",
             mime="application/json"
         )
 
 else:
     # ============================================================
-    # PLACEHOLDER - NO QUERY YET
+    # PLACEHOLDER
     # ============================================================
-    
+
     st.info("👆 Enter **Patient ID** and **Clinical Query**, then click **Run Analysis** to start.")
-    
+
     st.markdown("---")
     st.markdown("### 💡 Example Queries")
-    
+
     examples = [
         "Is there any pulmonary abnormality?",
         "Are there signs of pleural effusion?",
         "Is there evidence of cardiomegaly?",
         "What are the findings in the chest X-ray?",
-        "Is there pancreatic duct dilation?",
-        "Are there any focal lesions in the prostate?"
     ]
-    
+
     for example in examples:
         if st.button(f"📝 {example}", key=example):
             st.session_state['example_query'] = example
@@ -610,7 +643,7 @@ st.markdown("---")
 st.markdown(
     """
     <div style="text-align: center; color: #666; font-size: 0.9rem;">
-        🏥 Built for Clinical AI Research | Powered by LangGraph & Ollama
+        🏥 Built for Clinical AI Research | Powered by LangGraph & Ollama | RBAC Enabled
     </div>
     """,
     unsafe_allow_html=True
