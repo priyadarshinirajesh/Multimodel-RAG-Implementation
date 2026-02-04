@@ -43,6 +43,11 @@ def clinical_reasoning_agent(query: str, evidence: list, user_role: str = "docto
     else:
         image_insights = image_insight_agent_llava_med(evidence, query)
 
+    pathology_findings = []
+    for idx, e in enumerate(evidence, start=1):
+        if "pathology_findings" in e and e["pathology_findings"]:
+            pathology_findings.append(f"[R{idx}] {e['pathology_findings']}")
+
     combined_evidence = [
         f"[R{i}] ({e['modality']}) {e['report_text']}"
         for i, e in enumerate(evidence, start=1)
@@ -59,6 +64,9 @@ def clinical_reasoning_agent(query: str, evidence: list, user_role: str = "docto
 You are a clinical decision-support AI.
 
 {role_instructions}
+
+PATHOLOGY DETECTION RESULTS (from DenseNet CNN):
+{chr(10).join(pathology_findings) if pathology_findings else "No pathologies detected above threshold"}
 
 ABSOLUTE RULES (MANDATORY):
 - Use ONLY the evidence provided below.
