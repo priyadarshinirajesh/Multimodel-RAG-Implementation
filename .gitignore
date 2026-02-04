@@ -7,4 +7,5 @@ trial.xlsx
 chest_xray_test_queries_p.xlsx
 pathology_detection/evaluation/results/
 pathology_detection/logs/
+pathology_detection/weights/
 
