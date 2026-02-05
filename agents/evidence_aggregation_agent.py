@@ -2,11 +2,12 @@
 
 from utils.logger import get_logger
 from agents.rbac_filter import apply_rbac_filter
+from agents.pathology_detection_agent import get_pathology_detector  # NEW!
 
 logger = get_logger("EvidenceAggregator")
 
 
-def aggregate_evidence(results, allowed_modalities=None,user_role="doctor"):
+def aggregate_evidence(results, allowed_modalities=None, user_role="doctor"):
     evidence = []
 
     logger.info(
@@ -14,7 +15,6 @@ def aggregate_evidence(results, allowed_modalities=None,user_role="doctor"):
     )
 
     for r in results:
-
         # Handle (score, ScoredPoint)
         if isinstance(r, tuple):
             _, r = r
@@ -59,11 +59,19 @@ def aggregate_evidence(results, allowed_modalities=None,user_role="doctor"):
         f"[EvidenceAggregator] Final evidence count: {len(evidence)}"
     )
 
-    #  NEW: Apply RBAC filtering
+    # 🆕 NEW: Add pathology detection to evidence
+    detector = get_pathology_detector()
+    evidence = detector.analyze_evidence(evidence)
+    
+    logger.info(
+        f"[EvidenceAggregator] Pathology detection completed"
+    )
+
+    # Apply RBAC filtering
     filtered_evidence = apply_rbac_filter(evidence, user_role)
     
     logger.info(
         f"[EvidenceAggregator] Final evidence count after RBAC: {len(filtered_evidence)}"
     )
 
-    return filtered_evidence  #  Return RBAC-filtered evidence
+    return filtered_evidence
