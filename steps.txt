@@ -12,27 +12,6 @@ add the following line to the .env file
 
 GROQ_API_KEY=YOUR_GROQ_API_KEY
 
-also add new folders and subfolders in the project directory:
-
-mkdir -p pathology_detection
-mkdir -p pathology_detection/models
-mkdir -p pathology_detection/weights
-mkdir -p pathology_detection/training
-mkdir -p pathology_detection/evaluation
-mkdir -p pathology_detection/visualizations
-mkdir -p data/processed  
-
-
-python pathology_detection/training/prepare_dataset.py
-
-python pathology_detection/models/densenet_classifier.py
-
-python pathology_detection/training/train.py
-
-python pathology_detection/evaluation/evaluate.py
-
-python tests/test_pathology_integration.py
-
 
 
 

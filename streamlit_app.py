@@ -1,10 +1,9 @@
-# streamlit_app.py
+# streamlit_app.py 
 
 import streamlit as st
 from agents.langgraph_flow.mmrag_graph import build_mmrag_graph
 from PIL import Image
 import os
-import pandas as pd
 
 # ============================================================
 # PAGE CONFIGURATION
@@ -449,108 +448,6 @@ if run_button and query.strip():
                         st.info("No image available")
 
     # ============================================================
-    # PATHOLOGY DETECTION RESULTS (NEW SECTION)
-    # ============================================================
-
-    st.markdown("---")
-    st.header("🔬 Pathology Detection Results")
-
-    # Check if any evidence has pathology scores
-    has_pathology_data = any(
-        "pathology_scores" in e and e["pathology_scores"]
-        for e in filtered_evidence
-    )
-
-    if has_pathology_data:
-        
-        # Aggregate all pathology scores across evidence
-        aggregated_scores = {}
-        for e in filtered_evidence:
-            if "pathology_scores" in e:
-                for pathology, score in e["pathology_scores"].items():
-                    if pathology not in aggregated_scores:
-                        aggregated_scores[pathology] = []
-                    aggregated_scores[pathology].append(score)
-        
-        # Calculate max score per pathology
-        max_scores = {
-            pathology: max(scores)
-            for pathology, scores in aggregated_scores.items()
-        }
-        
-        # Sort by score
-        sorted_pathologies = sorted(
-            max_scores.items(),
-            key=lambda x: x[1],
-            reverse=True
-        )[:8]  # Top 8
-        
-        # Create bar chart
-        if sorted_pathologies:
-            import plotly.graph_objects as go
-            
-            pathology_names = [p[0] for p in sorted_pathologies]
-            scores = [p[1] * 100 for p in sorted_pathologies]  # Convert to percentage
-            
-            # Color based on confidence
-            colors = [
-                'rgb(220, 53, 69)' if s >= 70 else    # Red for high
-                'rgb(255, 193, 7)' if s >= 50 else    # Yellow for moderate
-                'rgb(40, 167, 69)'                     # Green for low
-                for s in scores
-            ]
-            
-            fig = go.Figure(go.Bar(
-                x=scores,
-                y=pathology_names,
-                orientation='h',
-                marker=dict(color=colors),
-                text=[f'{s:.1f}%' for s in scores],
-                textposition='auto',
-            ))
-            
-            fig.update_layout(
-                title="Detected Pathologies (Maximum Confidence Across All Images)",
-                xaxis_title="Confidence (%)",
-                yaxis_title="Pathology",
-                height=400,
-                showlegend=False
-            )
-            
-            st.plotly_chart(fig, use_container_width=True)
-            
-            # Add legend for confidence levels
-            col1, col2, col3 = st.columns(3)
-            with col1:
-                st.markdown("🔴 **High Confidence** (≥70%)")
-            with col2:
-                st.markdown("🟡 **Moderate Confidence** (50-70%)")
-            with col3:
-                st.markdown("🟢 **Low Confidence** (<50%)")
-        
-        # Show detailed findings per evidence item
-        st.markdown("### Detailed Findings by Image")
-        
-        for idx, e in enumerate(filtered_evidence, start=1):
-            if "pathology_findings" in e and e["pathology_findings"]:
-                with st.expander(f"Evidence {idx} - Pathology Analysis"):
-                    st.markdown(e["pathology_findings"])
-                    
-                    # Show scores if available (for doctors)
-                    if user_role == "doctor" and "pathology_scores" in e:
-                        st.markdown("**Detailed Scores:**")
-                        scores_df = pd.DataFrame([
-                            {"Pathology": k, "Probability": f"{v*100:.2f}%"}
-                            for k, v in e["pathology_scores"].items()
-                            if v > 0.1  # Only show non-trivial scores
-                        ])
-                        if not scores_df.empty:
-                            st.dataframe(scores_df, hide_index=True)
-
-    else:
-        st.info("No pathology detection data available for this query.")
-
-    # ============================================================
     # FINAL CLINICAL RESPONSE
     # ============================================================
 
@@ -694,8 +591,7 @@ EVALUATION METRICS
         serializable_metrics = convert_to_serializable(metrics)
         serializable_quality_scores = convert_to_serializable(quality_scores)
 
-        # 1. Create the base export dictionary
-        export_json_data = {
+        export_json = json.dumps({
             "patient_id": patient_id,
             "query": query,
             "user_role": user_role,
@@ -708,21 +604,7 @@ EVALUATION METRICS
             "final_answer": final_answer,
             "metrics": serializable_metrics,
             "evidence_count": len(filtered_evidence)
-        }
-
-        # 2. Add pathology data if it was detected in this run
-        if 'has_pathology_data' in locals() and has_pathology_data:
-            pathology_export = {
-                "detected_pathologies": convert_to_serializable(max_scores),
-                "top_findings": [
-                    {"pathology": p[0], "confidence": f"{p[1]*100:.1f}%"}
-                    for p in sorted_pathologies[:5]
-                ]
-            }
-            export_json_data["pathology_detection"] = pathology_export
-
-        # 3. Convert to JSON
-        export_json = json.dumps(export_json_data, indent=2)
+        }, indent=2)
 
         st.download_button(
             label="📊 Download as JSON",
