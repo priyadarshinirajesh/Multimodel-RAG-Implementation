@@ -37,7 +37,7 @@ def run_batch_evaluation():
         print(f"📝 Query: {query[:80]}")
 
         # ------------------------------------------------------------
-        # INITIAL STATE (MATCHES STREAMLIT APP)
+        # ✅ UPDATED: Removed user_role (RBAC removed)
         # ------------------------------------------------------------
         initial_state = {
             "patient_id": patient_id,
