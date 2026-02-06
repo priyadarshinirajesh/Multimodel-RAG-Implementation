@@ -8,38 +8,50 @@ def enforce_structure(text: str) -> str:
     }
 
     current_section = None
+    lines = text.splitlines()
 
-    for line in text.splitlines():
+    for line in lines:
         lower = line.lower().strip()
+        
+        # Skip empty lines
+        if not lower:
+            continue
 
-        if "diagnosis" in lower or "impression" in lower:
+        # ✅ FIXED: Explicit section header detection
+        if "diagnosis" in lower and "impression" in lower:
             current_section = "Diagnosis / Impression"
             continue
-        elif "supporting evidence" in lower or lower.startswith("-"):
-            current_section = current_section or "Supporting Evidence"
+        elif ("diagnosis" in lower or "impression" in lower) and ":" in line:
+            current_section = "Diagnosis / Impression"
+            continue
+        elif "supporting evidence" in lower or "evidence:" in lower:
+            current_section = "Supporting Evidence"
+            continue
         elif "next steps" in lower or "recommendation" in lower:
             current_section = "Next Steps / Recommendations"
             continue
-
+        
+        # ✅ Capture content only if we're in a section
         if current_section:
             sections[current_section] += line + "\n"
 
-    # 🔒 Force minimum content
+    # 🔒 Force minimum content (with proper structure)
     if not sections["Diagnosis / Impression"].strip():
         sections["Diagnosis / Impression"] = (
-            "- No definitive abnormality identified based on available evidence. [R1]\n"
+            "- No definitive abnormality identified based on available evidence. [R1]"
         )
 
     if not sections["Supporting Evidence"].strip():
         sections["Supporting Evidence"] = (
-            "- Imaging findings do not demonstrate acute pathology. [R1]\n"
+            "- Imaging findings do not demonstrate acute pathology. [R1]"
         )
 
     if not sections["Next Steps / Recommendations"].strip():
         sections["Next Steps / Recommendations"] = (
-            "- Clinical correlation is recommended. [R1]\n"
+            "- Clinical correlation is recommended. [R1]"
         )
 
+    # ✅ Return with PROPER formatting
     return f"""Diagnosis / Impression:
 {sections["Diagnosis / Impression"].strip()}
 

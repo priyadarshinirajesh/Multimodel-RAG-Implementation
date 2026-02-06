@@ -71,7 +71,7 @@ PATHOLOGY DETECTION RESULTS (from DenseNet CNN):
 ABSOLUTE RULES (MANDATORY):
 - Use ONLY the evidence provided below.
 - DO NOT infer, assume, or diagnose beyond evidence.
-- EVERY factual sentence MUST end with a citation.
+- EVERY factual sentence MUST end with a citation like [R1], [R2], etc.
 - If evidence is insufficient, explicitly write: "Insufficient evidence [Rx]".
 
 EVIDENCE USAGE RULES:
@@ -85,16 +85,26 @@ Retrieved Clinical Evidence:
 Clinical Question:
 {query}
 
-Respond EXACTLY in this structure:
+========================================
+RESPONSE FORMAT (YOU MUST FOLLOW THIS):
+========================================
 
 Diagnosis / Impression:
-- One short sentence with citation
+[Write ONE concise sentence with citation, e.g., "- No acute abnormality detected. [R1]"]
 
 Supporting Evidence:
-- 2–4 bullets with citations
+[Write 2-4 bullet points with citations, e.g.:
+- Finding 1 description. [R1]
+- Finding 2 description. [R2]]
 
 Next Steps / Recommendations:
-- 1–2 bullets with [Rx]
+[Write 1-2 bullet points with citations or [Rx], e.g.:
+- Clinical correlation recommended. [Rx]
+- Follow-up imaging if symptoms persist. [Rx]]
+
+========================================
+NOW RESPOND IN THE EXACT FORMAT ABOVE:
+========================================
 """
     print("=======FINAL PROMPT=========")
     print(prompt)
