@@ -69,14 +69,22 @@ def xray_contract_node(state):
 
 
 def aggregation_node(state):
+    current_attempts = state.get("retrieval_attempts", 0)
+    
+    # ✅ Increment BEFORE running retrieval
+    new_attempts = current_attempts + 1
+    
     evidence = aggregate_evidence(
         state["xray_results"], 
         allowed_modalities=["XRAY"],
-        user_role=state.get("user_role", "doctor")  # 🆕 Pass user_role
+        user_role=state.get("user_role", "doctor")
     )
+    
+    print(f"[DEBUG] Aggregation complete - attempt {new_attempts}")
+    
     return {
         "evidence": evidence,
-        "retrieval_attempts": state.get("retrieval_attempts", 0) + 1
+        "retrieval_attempts": new_attempts  # ✅ Now this counter is accurate
     }
 
 def evidence_quality_filter_node(state):
@@ -179,10 +187,19 @@ def summary_node(state):
 # =========================
 
 def should_retry_xray(state):
+    # Check if passed
     if state["retrieval_contract_result"]["passed"]:
         return "proceed"
-    if state.get("retrieval_attempts", 0) >= 2:
+    
+    # ✅ FIX: Check attempts BEFORE incrementing
+    attempts = state.get("retrieval_attempts", 0)
+    
+    # ⚠️ CRITICAL: Force proceed if we've tried enough times
+    if attempts >= 2:
+        print(f"[DEBUG] Max retrieval attempts ({attempts}) reached - forcing proceed")
         return "proceed"
+    
+    print(f"[DEBUG] Retrieval attempt {attempts + 1} - retrying")
     return "retry"
 
 def should_retry_retrieval(state):

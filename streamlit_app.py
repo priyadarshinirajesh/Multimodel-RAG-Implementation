@@ -256,7 +256,10 @@ if run_button and query.strip():
             "quality_scores": {}
         }
 
-        final_state = graph.invoke(initial_state)
+        final_state = graph.invoke(
+            initial_state,
+            config={"recursion_limit":50}
+        )
 
     st.success("✅ Pipeline completed!")
 
@@ -543,15 +546,40 @@ if run_button and query.strip():
                     st.markdown(e["pathology_findings"])
                     
                     # Show scores if available (for doctors)
+                    # Show scores if available (for doctors)
                     if user_role == "doctor" and "pathology_scores" in e:
                         st.markdown("**Detailed Scores:**")
-                        scores_df = pd.DataFrame([
-                            {"Pathology": k, "Probability": f"{v*100:.2f}%"}
-                            for k, v in e["pathology_scores"].items()
-                            if v > 0.1  # Only show non-trivial scores
-                        ])
-                        if not scores_df.empty:
-                            st.dataframe(scores_df, hide_index=True)
+                        
+                        # ✅ Sort by probability (highest first) and show top 10
+                        sorted_scores = sorted(
+                            e["pathology_scores"].items(), 
+                            key=lambda x: x[1], 
+                            reverse=True
+                        )
+                        
+                        # ✅ Filter: show anything above 1% (instead of 10%)
+                        filtered_scores = [
+                            (pathology, score) 
+                            for pathology, score in sorted_scores 
+                            if score > 0.01  # 1% threshold
+                        ][:10]  # Top 10 max
+                        
+                        if filtered_scores:
+                            scores_df = pd.DataFrame([
+                                {
+                                    "Pathology": pathology, 
+                                    "Probability": f"{score*100:.2f}%",
+                                    "Confidence": (
+                                        "🔴 High" if score >= 0.7 else 
+                                        "🟡 Moderate" if score >= 0.5 else 
+                                        "🟢 Low"
+                                    )
+                                }
+                                for pathology, score in filtered_scores
+                            ])
+                            st.dataframe(scores_df, hide_index=True, use_container_width=True)
+                        else:
+                            st.info("ℹ️ All pathology scores below 1% threshold")
 
     else:
         st.info("No pathology detection data available for this query.")
