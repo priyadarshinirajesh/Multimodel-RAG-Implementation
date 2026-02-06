@@ -57,43 +57,8 @@ st.markdown("""
         padding-left: 1rem;
         margin: 1rem 0;
     }
-    .role-row {
-        display: flex;
-        gap: 12px;
-        margin-bottom: 8px;
-    }
-    .role-card {
-        flex: 1;
-        border: 2px solid #dee2e6;
-        border-radius: 10px;
-        padding: 14px 10px;
-        text-align: center;
-        cursor: pointer;
-        background: #1e1e2e;
-        color: #cdd6f4;
-        transition: all 0.2s;
-    }
-    .role-card:hover {
-        border-color: #1f77b4;
-    }
-    .role-card.active-doctor {
-        border-color: #4a9eff;
-        background: #1a2332;
-        box-shadow: 0 0 8px rgba(74,158,255,0.4);
-    }
-    .role-card.active-nurse {
-        border-color: #f0c040;
-        background: #2a2518;
-        box-shadow: 0 0 8px rgba(240,192,64,0.4);
-    }
-    .role-card.active-patient {
-        border-color: #5dd4c4;
-        background: #182a28;
-        box-shadow: 0 0 8px rgba(93,212,196,0.4);
-    }
-    .role-card .role-icon { font-size: 1.8rem; }
-    .role-card .role-label { font-weight: bold; font-size: 0.95rem; margin-top: 4px; }
-    .role-card .role-desc { font-size: 0.78rem; color: #888; margin-top: 4px; }
+    
+    
 </style>
 """, unsafe_allow_html=True)
 
@@ -119,71 +84,18 @@ with st.sidebar:
     max_retrieval_retries = st.number_input("Max Retrieval Retries", 1, 5, 2)
     max_reasoning_retries = st.number_input("Max Reasoning Retries", 1, 5, 2)
 
-    st.markdown("---")
     st.markdown("**ℹ️ About**")
     st.markdown("""
     This system uses:
-    - Role-Based Access Control
+    - Multi-agent architecture
     - Local feedback loops
     - Quality gates between stages
     - Evidence pre-filtering
     - Progressive refinement
+    - Pathology detection (DenseNet-121)
     """)
 
-# ============================================================
-# ROLE SELECTOR — on main page, always visible
-# ============================================================
 
-st.markdown("---")
-st.subheader("👤 Select Your Role")
-
-# Track role in session_state so clicking a button persists it
-if "user_role" not in st.session_state:
-    st.session_state["user_role"] = "doctor"
-
-role_col1, role_col2, role_col3 = st.columns(3)
-
-with role_col1:
-    doctor_active = "active-doctor" if st.session_state["user_role"] == "doctor" else ""
-    st.markdown(f"""
-    <div class="role-card {doctor_active}">
-        <div class="role-icon">👨‍⚕️</div>
-        <div class="role-label">Doctor</div>
-        <div class="role-desc">Full clinical access — reports, images, detailed reasoning</div>
-    </div>
-    """, unsafe_allow_html=True)
-    if st.button("Select Doctor", key="btn_doctor", use_container_width=True):
-        st.session_state["user_role"] = "doctor"
-        st.rerun()
-
-with role_col2:
-    nurse_active = "active-nurse" if st.session_state["user_role"] == "nurse" else ""
-    st.markdown(f"""
-    <div class="role-card {nurse_active}">
-        <div class="role-icon">👩‍⚕️</div>
-        <div class="role-label">Nurse</div>
-        <div class="role-desc">Care-focused — findings only, no images, practical language</div>
-    </div>
-    """, unsafe_allow_html=True)
-    if st.button("Select Nurse", key="btn_nurse", use_container_width=True):
-        st.session_state["user_role"] = "nurse"
-        st.rerun()
-
-with role_col3:
-    patient_active = "active-patient" if st.session_state["user_role"] == "patient" else ""
-    st.markdown(f"""
-    <div class="role-card {patient_active}">
-        <div class="role-icon">🧑</div>
-        <div class="role-label">Patient</div>
-        <div class="role-desc">Simplified — plain language, your images, no jargon</div>
-    </div>
-    """, unsafe_allow_html=True)
-    if st.button("Select Patient", key="btn_patient", use_container_width=True):
-        st.session_state["user_role"] = "patient"
-        st.rerun()
-
-# Pull the confirmed role out
-user_role = st.session_state["user_role"]
 
 # ============================================================
 # INPUT
@@ -224,7 +136,7 @@ if run_button and query.strip():
         initial_state = {
             "patient_id": int(patient_id),
             "query": query,
-            "user_role": user_role,
+
 
             # Routing
             "modalities": ["XRAY"],
@@ -269,13 +181,6 @@ if run_button and query.strip():
 
     st.markdown("---")
     st.header("📊 Pipeline Execution Summary")
-
-    role_display = {
-        "doctor": "👨‍⚕️ Doctor (Full Access)",
-        "nurse": "👩‍⚕️ Nurse (Care-Focused View)",
-        "patient": "🧑 Patient (Simplified View)"
-    }
-    st.info(f"**Active Role:** {role_display.get(user_role, user_role)}")
 
     col1, col2, col3 = st.columns(3)
 
@@ -371,16 +276,6 @@ if run_button and query.strip():
         if filter_result.get('feedback'):
             st.info(filter_result['feedback'])
 
-    # Stage 2: RBAC
-    with st.expander("**Stage 2: RBAC Access Control** 🔐", expanded=False):
-        st.markdown(f"**Active Role:** {role_display.get(user_role, user_role)}")
-        if user_role == "doctor":
-            st.success("✅ Full access — all evidence, images, and clinical reasoning enabled.")
-        elif user_role == "nurse":
-            st.warning("⚠️ Nurse view — image analysis skipped. Only Findings sections shown. Diagnostic conclusions removed.")
-        elif user_role == "patient":
-            st.info("ℹ️ Patient view — medical terms simplified. Images visible. Impression sections removed.")
-
     # Stage 3: Clinical Reasoning
     with st.expander("**Stage 3: Clinical Reasoning** 🧠", expanded=False):
         response_gate = final_state.get('response_gate_result', {})
@@ -448,8 +343,6 @@ if run_button and query.strip():
                             st.image(img, caption=f"Image {idx}", use_container_width=True)
                         except Exception as ex:
                             st.warning(f"Unable to display image: {ex}")
-                    elif user_role == "nurse":
-                        st.info("🔐 Image access restricted for Nurse role")
                     else:
                         st.info("No image available")
 
@@ -547,7 +440,7 @@ if run_button and query.strip():
                     
                     # Show scores if available (for doctors)
                     # Show scores if available (for doctors)
-                    if user_role == "doctor" and "pathology_scores" in e:
+                    if "pathology_scores" in e:
                         st.markdown("**Detailed Scores:**")
                         
                         # ✅ Sort by probability (highest first) and show top 10
@@ -680,7 +573,6 @@ CLINICAL DECISION SUPPORT REPORT
 
 Patient ID: {patient_id}
 Query: {query}
-Role: {user_role}
 
 PIPELINE SUMMARY
 {'-'*60}
@@ -706,7 +598,7 @@ EVALUATION METRICS
         st.download_button(
             label="📄 Download as Text",
             data=export_text,
-            file_name=f"clinical_report_patient_{patient_id}_{user_role}.txt",
+            file_name=f"clinical_report_patient_{patient_id}.txt",
             mime="text/plain"
         )
 
@@ -729,7 +621,6 @@ EVALUATION METRICS
         export_json_data = {
             "patient_id": patient_id,
             "query": query,
-            "user_role": user_role,
             "pipeline_summary": {
                 "total_iterations": int(total_iterations),
                 "retrieval_attempts": int(retrieval_attempts),
@@ -758,7 +649,7 @@ EVALUATION METRICS
         st.download_button(
             label="📊 Download as JSON",
             data=export_json,
-            file_name=f"clinical_report_patient_{patient_id}_{user_role}.json",
+            file_name=f"clinical_report_patient_{patient_id}.json",
             mime="application/json"
         )
 
@@ -792,7 +683,7 @@ st.markdown("---")
 st.markdown(
     """
     <div style="text-align: center; color: #666; font-size: 0.9rem;">
-        🏥 Built for Clinical AI Research | Powered by LangGraph & Ollama | RBAC Enabled
+        🏥 Built for Clinical AI Research | Powered by LangGraph & Ollama
     </div>
     """,
     unsafe_allow_html=True

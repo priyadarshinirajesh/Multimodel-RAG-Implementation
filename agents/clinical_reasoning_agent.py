@@ -27,22 +27,28 @@ MODEL_NAME = "llama-3.1-8b-instant"
 logger = get_logger("ReasoningAgent")
 
 
-def clinical_reasoning_agent(query: str, evidence: list, user_role: str = "doctor"):  # 🆕 Added user_role
-    logger.info(f"Starting clinical reasoning for role: {user_role}")
+def clinical_reasoning_agent(query: str, evidence: list, user_role: str = "doctor"):
+    """
+    Clinical reasoning agent (RBAC removed)
+    
+    Args:
+        query: Clinical query
+        evidence: List of evidence items
+        user_role: Kept for backward compatibility but not used
+    """
+    
+    logger.info(f"Starting clinical reasoning")
     logger.info(f"Evidence items received: {len(evidence)}")
 
-    # ✅ NEW: Use ALL retrieved evidence as ground truth
+    # Use ALL retrieved evidence as ground truth
     ground_truth_impressions = [e["report_text"] for e in evidence]
     
     logger.info(f"Ground truth items: {len(ground_truth_impressions)}")
 
-    # 🆕 NEW: Skip image analysis for nurses (they don't have image access)
-    if user_role == "nurse":
-        logger.info("[RBAC] Nurse role - skipping image analysis")
-        image_insights = []
-    else:
-        image_insights = image_insight_agent_llava_med(evidence, query)
+    # Image analysis (always enabled now)
+    image_insights = image_insight_agent_llava_med(evidence, query)
 
+    # Pathology findings
     pathology_findings = []
     for idx, e in enumerate(evidence, start=1):
         if "pathology_findings" in e and e["pathology_findings"]:
@@ -54,16 +60,11 @@ def clinical_reasoning_agent(query: str, evidence: list, user_role: str = "docto
     ]
     combined_evidence.extend(image_insights)
 
-    # 🆕 NEW: Role-specific system prompts
-    system_prompt = get_role_specific_system_prompt(user_role)
-    
-    # 🆕 NEW: Role-specific instructions
-    role_instructions = get_role_specific_instructions(user_role)
+    # Standard system prompt (no role variations)
+    system_prompt = "You are a clinical decision-support AI for medical professionals. Provide detailed, evidence-based clinical reasoning."
 
     prompt = f"""
 You are a clinical decision-support AI.
-
-{role_instructions}
 
 PATHOLOGY DETECTION RESULTS (from DenseNet CNN):
 {chr(10).join(pathology_findings) if pathology_findings else "No pathologies detected above threshold"}
@@ -106,6 +107,7 @@ Next Steps / Recommendations:
 NOW RESPOND IN THE EXACT FORMAT ABOVE:
 ========================================
 """
+    
     print("=======FINAL PROMPT=========")
     print(prompt)
     print("============================")
@@ -119,7 +121,7 @@ NOW RESPOND IN THE EXACT FORMAT ABOVE:
         "model": MODEL_NAME,
         "temperature": 0.0,
         "messages": [
-            {"role": "system", "content": system_prompt},  # 🆕 Role-specific system prompt
+            {"role": "system", "content": system_prompt},
             {"role": "user", "content": prompt}
         ]
     }
@@ -129,16 +131,16 @@ NOW RESPOND IN THE EXACT FORMAT ABOVE:
 
     raw_answer = response.json()["choices"][0]["message"]["content"]
 
-    # 🔒 HARD GUARANTEE
+    # Hard guarantee structure
     final_answer = enforce_structure(raw_answer)
 
-    # ✅ Deduplicate retrieved reports before evaluation
+    # Deduplicate retrieved reports before evaluation
     retrieved_texts = [e["report_text"] for e in evidence]
     unique_retrieved = list(dict.fromkeys(retrieved_texts))
     
     logger.info(f"Retrieved texts: {len(retrieved_texts)}, Unique: {len(unique_retrieved)}")
 
-    # ✅ Calculate metrics
+    # Calculate metrics
     metrics = {}
     metrics.update(
         precision_recall_mrr(
@@ -158,57 +160,3 @@ NOW RESPOND IN THE EXACT FORMAT ABOVE:
         "final_answer": final_answer,
         "metrics": metrics
     }
-
-
-# 🆕 NEW: Helper functions for role-specific prompts
-
-def get_role_specific_system_prompt(role: str) -> str:
-    """Returns appropriate system prompt based on user role"""
-    
-    if role == "doctor":
-        return "You are a clinical decision-support AI for medical professionals. Provide detailed, evidence-based clinical reasoning."
-    
-    elif role == "nurse":
-        return "You are a care-focused AI assistant for nursing staff. Provide clear, actionable information for patient care delivery. Avoid detailed diagnostic reasoning - focus on observations and care instructions."
-    
-    elif role == "patient":
-        return "You are a patient education AI. Use simple, non-technical language. Explain findings in a way that is easy to understand. Avoid medical jargon and complex diagnostic terminology."
-    
-    else:
-        return "You are a clinical decision-support AI."
-
-
-def get_role_specific_instructions(role: str) -> str:
-    """Returns role-specific instructions for the prompt"""
-    
-    if role == "doctor":
-        return """
-DOCTOR MODE:
-- Provide complete clinical reasoning
-- Include all diagnostic considerations
-- Use standard medical terminology
-- Reference specific anatomical findings
-"""
-    
-    elif role == "nurse":
-        return """
-NURSE MODE:
-- Focus on observable findings and care implications
-- Use clear, practical language
-- Emphasize what needs to be monitored or reported
-- DO NOT provide diagnostic conclusions
-- Frame findings in terms of care actions
-"""
-    
-    elif role == "patient":
-        return """
-PATIENT MODE:
-- Use SIMPLE, everyday language
-- Explain medical terms when you must use them
-- Focus on what the findings mean in practical terms
-- Avoid frightening or overly technical descriptions
-- Be reassuring where appropriate while remaining truthful
-"""
-    
-    else:
-        return ""
