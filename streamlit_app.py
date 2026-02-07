@@ -66,7 +66,7 @@ st.markdown("""
 # HEADER
 # ============================================================
 
-st.markdown('<div class="main-header">🧠 Multimodal Clinical Decision Support System</div>', unsafe_allow_html=True)
+st.markdown('<div class="main-header"> Multimodal Clinical Decision Support System</div>', unsafe_allow_html=True)
 st.markdown('<div class="sub-header">AI-powered clinical reasoning with Quality Gates & Local Feedback Loops</div>', unsafe_allow_html=True)
 
 # ============================================================
@@ -74,7 +74,7 @@ st.markdown('<div class="sub-header">AI-powered clinical reasoning with Quality 
 # ============================================================
 
 with st.sidebar:
-    st.header("⚙️ Configuration")
+    st.header(" Configuration")
 
     st.subheader("Quality Thresholds")
     evidence_threshold = st.slider("Evidence Quality", 0.0, 1.0, 0.6, 0.05)
@@ -84,7 +84,7 @@ with st.sidebar:
     max_retrieval_retries = st.number_input("Max Retrieval Retries", 1, 5, 2)
     max_reasoning_retries = st.number_input("Max Reasoning Retries", 1, 5, 2)
 
-    st.markdown("**ℹ️ About**")
+    st.markdown("**ℹ About**")
     st.markdown("""
     This system uses:
     - Multi-agent architecture
@@ -102,7 +102,7 @@ with st.sidebar:
 # ============================================================
 
 st.markdown("---")
-st.subheader("📝 Input Parameters")
+st.subheader(" Input Parameters")
 
 col1, col2 = st.columns([1, 3])
 
@@ -129,7 +129,7 @@ run_button = st.button("🔬 Run Analysis", type="primary", use_container_width=
 
 if run_button and query.strip():
 
-    with st.spinner("🔄 Running multi-agent pipeline with quality gates..."):
+    with st.spinner(" Running multi-agent pipeline with quality gates..."):
 
         graph = build_mmrag_graph()
 
@@ -173,14 +173,14 @@ if run_button and query.strip():
             config={"recursion_limit":50}
         )
 
-    st.success("✅ Pipeline completed!")
+    st.success(" Pipeline completed!")
 
     # ============================================================
     # PIPELINE SUMMARY
     # ============================================================
 
     st.markdown("---")
-    st.header("📊 Pipeline Execution Summary")
+    st.header(" Pipeline Execution Summary")
 
     col1, col2, col3 = st.columns(3)
 
@@ -215,9 +215,9 @@ if run_button and query.strip():
             delta=f"{evidence_score - evidence_threshold:.2f}" if evidence_score else None
         )
         if evidence_score >= evidence_threshold:
-            st.markdown('<div class="quality-badge-pass">✅ PASS</div>', unsafe_allow_html=True)
+            st.markdown('<div class="quality-badge-pass"> PASS</div>', unsafe_allow_html=True)
         else:
-            st.markdown('<div class="quality-badge-fail">⚠️ ATTENTION</div>', unsafe_allow_html=True)
+            st.markdown('<div class="quality-badge-fail"> ATTENTION</div>', unsafe_allow_html=True)
 
     with col2:
         response_score = quality_scores.get('response', 0)
@@ -227,9 +227,9 @@ if run_button and query.strip():
             delta=f"{response_score - response_threshold:.2f}" if response_score else None
         )
         if response_score >= response_threshold:
-            st.markdown('<div class="quality-badge-pass">✅ PASS</div>', unsafe_allow_html=True)
+            st.markdown('<div class="quality-badge-pass"> PASS</div>', unsafe_allow_html=True)
         else:
-            st.markdown('<div class="quality-badge-fail">⚠️ ATTENTION</div>', unsafe_allow_html=True)
+            st.markdown('<div class="quality-badge-fail"> ATTENTION</div>', unsafe_allow_html=True)
 
     with col3:
         avg_quality = (
@@ -237,21 +237,21 @@ if run_button and query.strip():
         )
         st.metric("Overall Quality", f"{avg_quality:.2f}")
         if avg_quality >= 0.7:
-            st.markdown('<div class="quality-badge-pass">✅ EXCELLENT</div>', unsafe_allow_html=True)
+            st.markdown('<div class="quality-badge-pass"> EXCELLENT</div>', unsafe_allow_html=True)
         elif avg_quality >= 0.5:
-            st.markdown('<div class="quality-badge-pass">✅ GOOD</div>', unsafe_allow_html=True)
+            st.markdown('<div class="quality-badge-pass"> GOOD</div>', unsafe_allow_html=True)
         else:
-            st.markdown('<div class="quality-badge-fail">⚠️ NEEDS REVIEW</div>', unsafe_allow_html=True)
+            st.markdown('<div class="quality-badge-fail"> NEEDS REVIEW</div>', unsafe_allow_html=True)
 
     # ============================================================
     # STAGE BREAKDOWN
     # ============================================================
 
     st.markdown("---")
-    st.header("🔄 Stage-by-Stage Breakdown")
+    st.header(" Stage-by-Stage Breakdown")
 
     # Stage 1: Evidence Retrieval
-    with st.expander("**Stage 1: Evidence Retrieval** 🔍", expanded=False):
+    with st.expander("**Stage 1: Evidence Retrieval**", expanded=False):
         evidence_gate = final_state.get('evidence_gate_result', {})
         filter_result = final_state.get('evidence_filter_result', {})
 
@@ -277,7 +277,7 @@ if run_button and query.strip():
             st.info(filter_result['feedback'])
 
     # Stage 3: Clinical Reasoning
-    with st.expander("**Stage 3: Clinical Reasoning** 🧠", expanded=False):
+    with st.expander("**Stage 3: Clinical Reasoning** ", expanded=False):
         response_gate = final_state.get('response_gate_result', {})
         refinement = final_state.get('refinement_result', {})
 
@@ -303,7 +303,7 @@ if run_button and query.strip():
     # ============================================================
 
     st.markdown("---")
-    st.header("🔎 Retrieved Evidence")
+    st.header(" Retrieved Evidence")
 
     filtered_evidence = final_state.get("filtered_evidence", [])
 
@@ -352,7 +352,7 @@ if run_button and query.strip():
     # ============================================================
 
     st.markdown("---")
-    st.header("🔬 Pathology Detection Results")
+    st.header(" Pathology Detection Results")
 
     # Check if any evidence has pathology scores
     has_pathology_data = any(
@@ -426,9 +426,9 @@ if run_button and query.strip():
             with col1:
                 st.markdown("🔴 **High Confidence** (≥70%)")
             with col2:
-                st.markdown("🟡 **Moderate Confidence** (50-70%)")
+                st.markdown("🟡 **Moderate Confidence** (40-70%)")
             with col3:
-                st.markdown("🟢 **Low Confidence** (<50%)")
+                st.markdown("🟢 **Low Confidence** (<40%)")
         
         # Show detailed findings per evidence item
         st.markdown("### Detailed Findings by Image")
@@ -472,7 +472,7 @@ if run_button and query.strip():
                             ])
                             st.dataframe(scores_df, hide_index=True, use_container_width=True)
                         else:
-                            st.info("ℹ️ All pathology scores below 1% threshold")
+                            st.info("ℹ All pathology scores below 1% threshold")
 
     else:
         st.info("No pathology detection data available for this query.")
@@ -482,7 +482,7 @@ if run_button and query.strip():
     # ============================================================
 
     st.markdown("---")
-    st.header("🧠 Final Clinical Response")
+    st.header("Final Clinical Response")
 
     final_answer = final_state.get("final_answer", "No response generated")
 
@@ -539,14 +539,14 @@ if run_button and query.strip():
 
     refinement = final_state.get('refinement_result', {})
     if refinement and refinement.get('refinements_applied'):
-        st.info(f"ℹ️ This response was refined through {refinement.get('iterations', 0)} stages: {', '.join(refinement.get('refinements_applied', []))}")
+        st.info(f"ℹ This response was refined through {refinement.get('iterations', 0)} stages: {', '.join(refinement.get('refinements_applied', []))}")
 
     # ============================================================
     # EVALUATION METRICS
     # ============================================================
 
     st.markdown("---")
-    st.header("📈 Evaluation Metrics")
+    st.header(" Evaluation Metrics")
 
     metrics = final_state.get("metrics", {})
 
@@ -562,7 +562,7 @@ if run_button and query.strip():
     # ============================================================
 
     st.markdown("---")
-    st.header("💾 Export Results")
+    st.header(" Export Results")
 
     col1, col2 = st.columns(2)
 
@@ -596,7 +596,7 @@ EVALUATION METRICS
 """
 
         st.download_button(
-            label="📄 Download as Text",
+            label=" Download as Text",
             data=export_text,
             file_name=f"clinical_report_patient_{patient_id}.txt",
             mime="text/plain"
@@ -647,7 +647,7 @@ EVALUATION METRICS
         export_json = json.dumps(export_json_data, indent=2)
 
         st.download_button(
-            label="📊 Download as JSON",
+            label=" Download as JSON",
             data=export_json,
             file_name=f"clinical_report_patient_{patient_id}.json",
             mime="application/json"
@@ -658,10 +658,10 @@ else:
     # PLACEHOLDER
     # ============================================================
 
-    st.info("👆 Enter **Patient ID** and **Clinical Query**, then click **Run Analysis** to start.")
+    st.info(" Enter **Patient ID** and **Clinical Query**, then click **Run Analysis** to start.")
 
     st.markdown("---")
-    st.markdown("### 💡 Example Queries")
+    st.markdown("###  Example Queries")
 
     examples = [
         "Is there any pulmonary abnormality?",
@@ -671,7 +671,7 @@ else:
     ]
 
     for example in examples:
-        if st.button(f"📝 {example}", key=example):
+        if st.button(f" {example}", key=example):
             st.session_state['example_query'] = example
             st.rerun()
 
@@ -683,7 +683,7 @@ st.markdown("---")
 st.markdown(
     """
     <div style="text-align: center; color: #666; font-size: 0.9rem;">
-        🏥 Built for Clinical AI Research | Powered by LangGraph & Ollama
+         Built for Clinical AI Research | Powered by LangGraph & Ollama
     </div>
     """,
     unsafe_allow_html=True

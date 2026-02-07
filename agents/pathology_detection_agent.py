@@ -33,7 +33,7 @@ class PathologyDetectionAgent:
     - Handles errors gracefully
     """
     
-    def __init__(self, checkpoint_path=None, threshold=0.5, top_k=5):
+    def __init__(self, checkpoint_path=None, threshold=0.40, top_k=5):
         """
         Args:
             checkpoint_path: Path to trained model checkpoint
