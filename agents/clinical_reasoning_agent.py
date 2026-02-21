@@ -19,7 +19,10 @@ load_dotenv()
 
 GROQ_API_KEY = os.getenv("GROQ_API_KEY")
 if not GROQ_API_KEY:
-    raise RuntimeError("❌ GROQ_API_KEY not found")
+    print("⚠️  WARNING: GROQ_API_KEY not found. Please set it before running the application.")
+    print("📌 To fix: export GROQ_API_KEY='your-key-here' (on Mac/Linux)")
+    print("📌 To fix: set GROQ_API_KEY=your-key-here (on Windows CMD)")
+    print("📌 To fix: $env:GROQ_API_KEY='your-key-here' (on Windows PowerShell)")
 
 GROQ_URL = "https://api.groq.com/openai/v1/chat/completions"
 MODEL_NAME = "llama-3.1-8b-instant"
