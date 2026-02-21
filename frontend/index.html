@@ -1,0 +1,315 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Multimodal Clinical Decision Support System</title>
+    <link rel="stylesheet" href="css/styles.css">
+</head>
+<body>
+    <!-- HEADER -->
+    <header class="header">
+        <div class="header-container">
+            <div class="header-content">
+                <h1 class="header-title">Multimodal Clinical Decision Support System</h1>
+                <p class="header-subtitle">AI-powered clinical reasoning with Quality Gates & Local Feedback Loops</p>
+            </div>
+        </div>
+    </header>
+
+    <!-- MAIN CONTAINER -->
+    <main class="main-container">
+        <!-- INPUT SECTION -->
+        <section class="input-section">
+            <div class="section-container">
+                <h2 class="section-title">Input Parameters</h2>
+                
+                <div class="input-grid">
+                    <div class="input-group">
+                        <label for="patientId" class="input-label">Patient ID</label>
+                        <div class="input-wrapper">
+                            <button class="input-btn-decrement" onclick="decrementPatient()">−</button>
+                            <input 
+                                type="number" 
+                                id="patientId" 
+                                class="input-field" 
+                                value="32" 
+                                min="1"
+                            >
+                            <button class="input-btn-increment" onclick="incrementPatient()">+</button>
+                        </div>
+                    </div>
+
+                    <div class="input-group input-group-full">
+                        <label for="clinicalQuery" class="input-label">Clinical Query</label>
+                        <textarea 
+                            id="clinicalQuery" 
+                            class="input-textarea"
+                            placeholder="e.g., Are there signs of pleural effusion in the X-ray?"
+                            rows="4"
+                        >Are there any signs of pleural effusion?</textarea>
+                    </div>
+                </div>
+
+                <button 
+                    id="analyzeBtn" 
+                    class="btn-analyze"
+                    onclick="runAnalysis()"
+                >
+                    <span class="btn-icon">⚡</span>
+                    Run Analysis
+                </button>
+
+                <div id="statusMessage" class="status-message hidden"></div>
+            </div>
+        </section>
+
+        <!-- LOADING SPINNER -->
+        <div id="loadingSpinner" class="loading-spinner hidden">
+            <div class="spinner-circle"></div>
+            <p class="spinner-text">Running multi-agent pipeline with quality gates...</p>
+        </div>
+
+        <!-- ERROR MESSAGE -->
+        <div id="errorMessage" class="error-message hidden"></div>
+
+        <!-- RESULTS SECTION (Hidden until analysis completes) -->
+        <div id="resultsContainer" class="results-container hidden">
+
+            <!-- PIPELINE EXECUTION SUMMARY -->
+            <section class="section">
+                <div class="section-container">
+                    <h2 class="section-title">Pipeline Execution Summary</h2>
+                    <div class="metrics-grid-3">
+                        <div class="metric-box">
+                            <p class="metric-label">Total Iterations</p>
+                            <p class="metric-value" id="totalIterations">0</p>
+                        </div>
+                        <div class="metric-box">
+                            <p class="metric-label">Retrieval Attempts</p>
+                            <p class="metric-value" id="retrievalAttempts">0</p>
+                        </div>
+                        <div class="metric-box">
+                            <p class="metric-label">Reasoning Attempts</p>
+                            <p class="metric-value" id="reasoningAttempts">0</p>
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+            <!-- QUALITY GATE RESULTS -->
+            <section class="section">
+                <div class="section-container">
+                    <h2 class="section-title section-title-icon">✅ Quality Gate Results</h2>
+                    
+                    <div class="quality-metrics-wrapper">
+                        <div class="quality-metric">
+                            <p class="quality-label">Evidence Quality</p>
+                            <div class="quality-value-wrapper">
+                                <p class="quality-value" id="evidenceQuality">0.00</p>
+                                <p class="quality-delta" id="evidenceDelta">↓ -0.07</p>
+                            </div>
+                            <div class="quality-badge" id="evidenceBadge">PASS</div>
+                        </div>
+
+                        <div class="quality-metric">
+                            <p class="quality-label">Response Quality</p>
+                            <div class="quality-value-wrapper">
+                                <p class="quality-value" id="responseQuality">0.00</p>
+                                <p class="quality-delta positive" id="responseDelta">↑ 0.19</p>
+                            </div>
+                            <div class="quality-badge" id="responseBadge">PASS</div>
+                        </div>
+
+                        <div class="quality-metric">
+                            <p class="quality-label">Overall Quality</p>
+                            <div class="quality-value-wrapper">
+                                <p class="quality-value" id="overallQuality">0.00</p>
+                            </div>
+                            <div class="quality-badge excellent" id="overallBadge">EXCELLENT</div>
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+            <!-- STAGE-BY-STAGE BREAKDOWN -->
+            <section class="section">
+                <div class="section-container">
+                    <h2 class="section-title">Stage-by-Stage Breakdown</h2>
+
+                    <!-- Stage 1 -->
+                    <div class="stage-card">
+                        <div class="stage-header" onclick="toggleStage('stage1')">
+                            <span class="stage-toggle">▼</span>
+                            <h3>Stage 1: Evidence Retrieval</h3>
+                        </div>
+                        <div id="stage1" class="stage-content">
+                            <div class="stage-metrics-3">
+                                <div class="stage-metric">
+                                    <p class="stage-metric-label">Original Evidence</p>
+                                    <p class="stage-metric-value" id="originalEvidence">0</p>
+                                </div>
+                                <div class="stage-metric">
+                                    <p class="stage-metric-label">Filtered Evidence</p>
+                                    <p class="stage-metric-value" id="filteredEvidenceCount">0</p>
+                                </div>
+                                <div class="stage-metric">
+                                    <p class="stage-metric-label">Removed</p>
+                                    <p class="stage-metric-value red" id="removedEvidence">0</p>
+                                </div>
+                            </div>
+
+                            <div class="stage-detail">
+                                <p><strong>Filter Quality:</strong></p>
+                                <p>Quality Score: <span id="filterQuality">0.00</span></p>
+                                <p>Gate Decision: <span id="gateDecision1">N/A</span></p>
+                            </div>
+
+                            <div class="stage-message" id="stageMessage1">
+                                Evidence quality is acceptable but could be improved
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Stage 3 -->
+                    <div class="stage-card">
+                        <div class="stage-header" onclick="toggleStage('stage3')">
+                            <span class="stage-toggle">▼</span>
+                            <h3>Stage 3: Clinical Reasoning</h3>
+                        </div>
+                        <div id="stage3" class="stage-content">
+                            <div class="stage-detail">
+                                <p><strong>Response Quality:</strong></p>
+                                <p>Score: <span id="reasoningQuality">0.00</span></p>
+                                <p>Decision: <span id="gateDecision3">N/A</span></p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+            <!-- PATHOLOGY DETECTION RESULTS -->
+            <section class="section">
+                <div class="section-container">
+                    <h2 class="section-title">Pathology Detection Results</h2>
+                    <p class="pathology-subtitle">Detected Pathologies (Maximum Confidence Across All Images)</p>
+                    
+                    <div class="pathology-chart" id="pathologyChart"></div>
+
+                    <div class="confidence-legend">
+                        <div class="legend-item">
+                            <span class="legend-dot high"></span>
+                            <span>High Confidence (≥70%)</span>
+                        </div>
+                        <div class="legend-item">
+                            <span class="legend-dot moderate"></span>
+                            <span>Moderate Confidence (40-70%)</span>
+                        </div>
+                        <div class="legend-item">
+                            <span class="legend-dot low"></span>
+                            <span>Low Confidence (&lt;40%)</span>
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+            <!-- DETAILED FINDINGS BY IMAGE -->
+            <section class="section">
+                <div class="section-container">
+                    <h2 class="section-title">Detailed Findings by Image</h2>
+                    
+                    <div class="findings-container" id="findingsContainer"></div>
+                </div>
+            </section>
+
+            <!-- FINAL CLINICAL RESPONSE -->
+            <section class="section">
+                <div class="section-container">
+                    <h2 class="section-title">Final Clinical Response</h2>
+
+                    <div class="clinical-response-section">
+                        <h3 class="clinical-subsection-title">Diagnosis / Impression:</h3>
+                        <div class="clinical-response-box" id="clinicalDiagnosis">
+                            No signs of pleural effusion detected. [R1], [R2]
+                        </div>
+                    </div>
+
+                    <div class="clinical-response-section">
+                        <h3 class="clinical-subsection-title">Supporting Evidence:</h3>
+                        <ul class="clinical-list" id="supportingEvidenceList">
+                            <li>The chest x-ray does not show any signs of pleural effusion. [R1-IMAGE]</li>
+                        </ul>
+                    </div>
+
+                    <div class="clinical-response-section">
+                        <h3 class="clinical-subsection-title">Next Steps / Recommendations:</h3>
+                        <ul class="clinical-list" id="recommendationsList">
+                            <li>Clinical correlation recommended to rule out other potential causes of symptoms. [Rx]</li>
+                        </ul>
+                    </div>
+                </div>
+            </section>
+
+            <!-- EVALUATION METRICS -->
+            <section class="section">
+                <div class="section-container">
+                    <h2 class="section-title">Evaluation Metrics</h2>
+                    
+                    <div class="metrics-grid-6" id="metricsGrid">
+                        <div class="eval-metric">
+                            <p class="eval-metric-label">Precision@K</p>
+                            <p class="eval-metric-value" id="precisionK">1.000</p>
+                        </div>
+                        <div class="eval-metric">
+                            <p class="eval-metric-label">Recall@K</p>
+                            <p class="eval-metric-value" id="recallK">1.000</p>
+                        </div>
+                        <div class="eval-metric">
+                            <p class="eval-metric-label">MRR</p>
+                            <p class="eval-metric-value" id="mrr">1.000</p>
+                        </div>
+                        <div class="eval-metric">
+                            <p class="eval-metric-label">Groundedness</p>
+                            <p class="eval-metric-value" id="groundedness">1.000</p>
+                        </div>
+                        <div class="eval-metric">
+                            <p class="eval-metric-label">Clinical Correctness</p>
+                            <p class="eval-metric-value" id="clinicalCorrectness">0.637</p>
+                        </div>
+                        <div class="eval-metric">
+                            <p class="eval-metric-label">Completeness</p>
+                            <p class="eval-metric-value" id="completeness">1.000</p>
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+            <!-- RETRIEVED EVIDENCE -->
+            <section class="section">
+                <div class="section-container">
+                    <h2 class="section-title">🔗 Retrieved Evidence</h2>
+
+                    <div class="evidence-summary" id="evidenceSummary">
+                        <span class="badge badge-success">✓ Found 2 relevant evidence items</span>
+                    </div>
+
+                    <div class="evidence-modality">
+                        <h3>Evidence by Modality:</h3>
+                        <div class="modality-items" id="modalityItems"></div>
+                    </div>
+
+                    <div class="evidence-items-wrapper" id="evidenceItemsWrapper"></div>
+                </div>
+            </section>
+
+        </div>
+    </main>
+
+    <!-- FOOTER -->
+    <footer class="footer">
+        <p>&copy; 2026 Multimodal Clinical Decision Support System. All rights reserved.</p>
+    </footer>
+
+    <script src="js/app.js"></script>
+</body>
+</html>
