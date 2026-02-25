@@ -167,34 +167,16 @@ class EvidenceQualityVerifier:
 
     
     def _calculate_quality_score(self, filtered_evidence: list, original_count: int) -> float:
-        """Calculate overall evidence quality score"""
-        
+        """
+        Relevance-only evidence quality score.
+        No modality diversity, no retention efficiency, no coverage weighting.
+        """
         if not filtered_evidence:
             return 0.0
-        
-        # Component 1: Average relevance score
-        avg_relevance = np.mean([e.get("relevance_score", 0) for e in filtered_evidence])
-        
-        # Component 2: Evidence diversity (different modalities is good)
-        modalities = set(e.get("modality") for e in filtered_evidence)
-        diversity_score = min(len(modalities) / 3.0, 1.0)
-        
-        # Component 3: Coverage (enough evidence without too much noise)
-        coverage_score = min(len(filtered_evidence) / 5.0, 1.0)
-        
-        # Component 4: Filtering efficiency (not removing too much)
-        retention_rate = len(filtered_evidence) / original_count if original_count > 0 else 0
-        efficiency_score = 1.0 if retention_rate > 0.5 else retention_rate * 2
-        
-        # Weighted average
-        quality_score = (
-            avg_relevance * 0.4 +
-            diversity_score * 0.2 +
-            coverage_score * 0.2 +
-            efficiency_score * 0.2
-        )
-        
-        return round(quality_score, 3)
+
+        avg_relevance = np.mean([e.get("relevance_score", 0.0) for e in filtered_evidence])
+        return round(float(avg_relevance), 3)
+
     
     def _generate_feedback(self, original_count: int, final_count: int, quality_score: float) -> str:
         """Generate actionable feedback for retrieval adjustment"""
