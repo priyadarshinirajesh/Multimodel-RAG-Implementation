@@ -38,18 +38,29 @@ class ResponseRefiner:
         }
 
     def _fix_citations(self, text: str, evidence: list):
-        sentences = [s.strip() for s in text.split('.') if s.strip()]
+        lines = text.splitlines()
         changed = False
+        out = []
 
-        for i, s in enumerate(sentences):
-            if s.lower().startswith(("diagnosis", "supporting", "next steps")):
+        for line in lines:
+            s = line.strip()
+            if not s:
+                out.append(line)
                 continue
-            if not re.search(r'\[R\d+\]', s):
-                sentences[i] = s + " [R1]"
+
+            low = s.lower()
+            if low.startswith("diagnosis / impression:") or low.startswith("supporting evidence:") or low.startswith("next steps / recommendations:"):
+                out.append(line)
+                continue
+
+            if s.startswith("-") and not re.search(r'\[(R\d+|Rx)(-IMAGE)?\]', s):
+                out.append(f"{line} [R1]")
                 changed = True
+            else:
+                out.append(line)
 
-        return ". ".join(sentences) + ".", changed
-
+        return "\n".join(out), changed
+    
     def _polish_language(self, text: str):
         cleaned = re.sub(r'\n{3,}', '\n\n', text)
         cleaned = re.sub(r'\s+\.', '.', cleaned)

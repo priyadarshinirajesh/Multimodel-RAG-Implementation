@@ -121,7 +121,7 @@ with col2:
         height=100
     )
 
-run_button = st.button("🔬 Run Analysis", type="primary", use_container_width=True)
+run_button = st.button("🔬 Run Analysis", type="primary", width="stretch")
 
 # ============================================================
 # RUN PIPELINE
@@ -340,7 +340,7 @@ if run_button and query.strip():
                     if e.get('has_image') and e.get('image_path') and os.path.exists(e['image_path']):
                         try:
                             img = Image.open(e['image_path'])
-                            st.image(img, caption=f"Image {idx}", use_container_width=True)
+                            st.image(img, caption=f"Image {idx}", width="stretch")
                         except Exception as ex:
                             st.warning(f"Unable to display image: {ex}")
                     else:
@@ -419,7 +419,7 @@ if run_button and query.strip():
                 showlegend=False
             )
             
-            st.plotly_chart(fig, use_container_width=True)
+            st.plotly_chart(fig, width="stretch")
             
             # Add legend for confidence levels
             col1, col2, col3 = st.columns(3)
@@ -470,7 +470,7 @@ if run_button and query.strip():
                                 }
                                 for pathology, score in filtered_scores
                             ])
-                            st.dataframe(scores_df, hide_index=True, use_container_width=True)
+                            st.dataframe(scores_df, hide_index=True, width="stretch")
                         else:
                             st.info("ℹ All pathology scores below 1% threshold")
 

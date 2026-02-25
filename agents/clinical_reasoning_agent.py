@@ -26,6 +26,25 @@ MODEL_NAME = "llama-3.1-8b-instant"
 
 logger = get_logger("ReasoningAgent")
 
+def _remove_impression(report_text: str) -> str:
+    if not report_text:
+        return ""
+    lower = report_text.lower()
+    idx = lower.find("impression:")
+    if idx == -1:
+        return report_text.strip()
+    return report_text[:idx].strip()
+
+def _extract_impression(report_text: str) -> str:
+    if not report_text:
+        return ""
+    lower = report_text.lower()
+    idx = lower.find("impression:")
+    if idx == -1:
+        return ""
+    return report_text[idx + len("impression:"):].strip()
+
+
 
 def clinical_reasoning_agent(query: str, evidence: list, user_role: str = "doctor"):
     """
@@ -55,9 +74,10 @@ def clinical_reasoning_agent(query: str, evidence: list, user_role: str = "docto
             pathology_findings.append(f"[R{idx}] {e['pathology_findings']}")
 
     combined_evidence = [
-        f"[R{i}] ({e['modality']}) {e['report_text']}"
+        f"[R{i}] ({e['modality']}) {_remove_impression(e.get('report_text', ''))}"
         for i, e in enumerate(evidence, start=1)
     ]
+
     combined_evidence.extend(image_insights)
 
     # Standard system prompt (no role variations)

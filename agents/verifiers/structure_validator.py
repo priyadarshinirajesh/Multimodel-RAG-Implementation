@@ -1,15 +1,12 @@
-REQUIRED_SECTIONS = [
-    "Diagnosis / Impression:",
-    "Supporting Evidence:",
-    "Next Steps / Recommendations:"
-]
+import re
 
 def validate_structure(text: str) -> dict:
-    missing = [
-        section
-        for section in REQUIRED_SECTIONS
-        if section.lower() not in text.lower()
+    patterns = [
+        r"(?im)^Diagnosis / Impression:\s*$",
+        r"(?im)^Supporting Evidence:\s*$",
+        r"(?im)^Next Steps / Recommendations:\s*$"
     ]
+    missing = [p for p in patterns if not re.search(p, text)]
 
     return {
         "passed": len(missing) == 0,

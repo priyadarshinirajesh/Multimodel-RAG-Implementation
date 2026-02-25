@@ -25,7 +25,7 @@ from agents.clinical_reasoning_agent import clinical_reasoning_agent
 from agents.verifiers.evidence_quality_verifier import EvidenceQualityVerifier
 from agents.verifiers.response_refiner import ResponseRefiner
 from agents.quality_gates import EvidenceQualityGate, ResponseQualityGate
-
+from agents.verifiers.structure_repair import enforce_structure
 
 class MMRAgState(TypedDict):
     patient_id: int
@@ -148,8 +148,9 @@ def response_refinement_node(state):
         evidence=state["filtered_evidence"],
         query=state["query"]
     )
+    repaired = enforce_structure(result["refined_response"])
     return {
-        "final_answer": result["refined_response"],
+        "final_answer": repaired,
         "refinement_count": state.get("refinement_count", 0) + 1
     }
 
