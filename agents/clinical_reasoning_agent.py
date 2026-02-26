@@ -8,7 +8,9 @@ from evaluation.diagnosis_evaluator import (
     precision_recall_mrr,
     groundedness,
     clinical_correctness,
-    completeness
+    completeness,
+    groundedness_ragas,
+    groundedness_simple
 )
 
 from agents.image_insight_agent_llava_med import image_insight_agent_llava_med
@@ -170,7 +172,17 @@ NOW RESPOND IN THE EXACT FORMAT ABOVE:
         )
     )
 
-    metrics["Groundedness"] = groundedness(final_answer)
+    g = groundedness_ragas(
+        query=query,
+        answer=final_answer,
+        evidence=evidence,
+        fallback_to_simple=False
+    )
+
+    metrics["Groundedness"] = g["score"]
+    metrics["GroundednessSource"] = g["source"]
+    metrics["GroundednessSimple"] = groundedness_simple(final_answer)
+
     metrics["ClinicalCorrectness"] = clinical_correctness(
         final_answer, ground_truth_impressions
     )

@@ -40,6 +40,11 @@ class QualityGate:
             "suggested_action": suggested_action
         }
 
+def _to_float(v, default=0.0):
+    try:
+        return float(v) if v is not None else default
+    except Exception:
+        return default
 
 class ResponseQualityGate(QualityGate):
     """Quality gate after clinical reasoning"""
@@ -59,9 +64,9 @@ class ResponseQualityGate(QualityGate):
         logger.info(f"[{self.name}] Evaluating response quality...")
         
         # Extract key metrics
-        groundedness = metrics.get("Groundedness", 0.0)
-        completeness = metrics.get("Completeness", 0.0)
-        clinical_correctness = metrics.get("ClinicalCorrectness", 0.0)
+        groundedness = _to_float(metrics.get("Groundedness", 0.0))
+        completeness = _to_float(metrics.get("Completeness", 0.0))
+        clinical_correctness = _to_float(metrics.get("ClinicalCorrectness", 0.0))
         
         # Calculate composite score
         score = (

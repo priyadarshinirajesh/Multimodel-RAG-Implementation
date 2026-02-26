@@ -117,6 +117,7 @@ def run_batch_evaluation():
                 "Recall@K": metrics.get("Recall@K"),
                 "MRR": metrics.get("MRR"),
                 "Groundedness": metrics.get("Groundedness"),
+                "GroundednessSource": metrics.get("GroundednessSource"),
                 "ClinicalCorrectness": metrics.get("ClinicalCorrectness"),
                 "Completeness": metrics.get("Completeness"),
 
@@ -163,7 +164,7 @@ def run_batch_evaluation():
     preferred_order = [
         "patient_id", "query", "status",
         "Precision@K", "Recall@K", "MRR",
-        "Groundedness", "ClinicalCorrectness", "Completeness", "OfflineClinicalCorrectness",
+        "Groundedness","GroundednessSource", "ClinicalCorrectness", "Completeness", "OfflineClinicalCorrectness",
         "generated_answer", "expected_answer",
         "total_iterations", "retrieval_attempts", "reasoning_attempts", "refinement_count",
         "evidence_quality", "response_quality", "overall_quality",
@@ -207,6 +208,12 @@ def run_batch_evaluation():
             print(f"  Evidence PASS: {(success_df['evidence_decision'] == 'PASS').mean() * 100:.1f}%")
         if "response_decision" in success_df.columns:
             print(f"  Response PASS: {(success_df['response_decision'] == 'PASS').mean() * 100:.1f}%")
+        
+        if "GroundednessSource" in success_df.columns:
+            fail_rate = (success_df["GroundednessSource"] == "ragas_failed").mean() * 100
+            ragas_rate = (success_df["GroundednessSource"] == "ragas").mean() * 100
+            print(f"  Groundedness via RAGAS: {ragas_rate:.1f}%")
+            print(f"  RAGAS failed: {fail_rate:.1f}%")
 
     print(f"\nResults saved to: {OUTPUT_FILE}")
     print("=" * 80)

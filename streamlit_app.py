@@ -549,13 +549,53 @@ if run_button and query.strip():
     st.header(" Evaluation Metrics")
 
     metrics = final_state.get("metrics", {})
+    export_metrics = {
+        k: v for k, v in metrics.items() 
+        if k not in {"GroundednessSimple", "EvaluationNote", "GroundednessSource"}
+    }
 
-    if metrics:
-        metric_cols = st.columns(len(metrics))
-        for col, (k, v) in zip(metric_cols, metrics.items()):
-            col.metric(label=k, value=f"{v:.3f}" if isinstance(v, float) else v)
+    # Show user-facing metrics only
+    preferred_order = [          # RAGAS faithfulness/groundedness (main)
+        "Precision@K",
+        "Recall@K",
+        "MRR",
+        "Groundedness",
+        "ClinicalCorrectness",
+        "Completeness"
+    ]
+
+    # Hide debug/internal metrics by default
+    hidden_keys = {"GroundednessSimple", "EvaluationNote"}
+
+    visible_metrics = {
+        k: metrics[k]
+        for k in preferred_order
+        if k in metrics and k not in hidden_keys
+    }
+
+    # if visible_metrics:
+    #     metric_cols = st.columns(len(visible_metrics))
+    #     for col, (k, v) in zip(metric_cols, visible_metrics.items()):
+    #         col.metric(label=k, value=f"{v:.3f}" if isinstance(v, (float, int)) else v)
+    if visible_metrics:
+        metric_cols = st.columns(len(visible_metrics))
+        for col, (k, v) in zip(metric_cols, visible_metrics.items()):
+            val = visible_metrics[k]
+            if isinstance(val, (float, int)):
+                col.metric(label=k, value=f"{val:.3f}")
+            else:
+                col.metric(label=k, value="N/A")
     else:
         st.warning("No evaluation metrics available")
+
+    # Optional debug view
+    # with st.expander("Debug Metrics (optional)", expanded=False):
+    #     debug_metrics = {k: v for k, v in metrics.items() if k in hidden_keys}
+    #     if debug_metrics:
+    #         st.json(debug_metrics)
+    #     else:
+    #         st.write("No debug metrics.")
+
 
     # ============================================================
     # EXPORT
@@ -592,7 +632,7 @@ CLINICAL RESPONSE
 
 EVALUATION METRICS
 {'-'*60}
-{chr(10).join([f'{k}: {v}' for k, v in metrics.items()])}
+{chr(10).join([f'{k}: {v}' for k, v in export_metrics.items()])}
 """
 
         st.download_button(
@@ -614,7 +654,8 @@ EVALUATION METRICS
                 return [convert_to_serializable(item) for item in obj]
             return obj
 
-        serializable_metrics = convert_to_serializable(metrics)
+        
+        serializable_metrics = convert_to_serializable(export_metrics)
         serializable_quality_scores = convert_to_serializable(quality_scores)
 
         # 1. Create the base data dictionary
