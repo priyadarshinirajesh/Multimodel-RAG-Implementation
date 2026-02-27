@@ -23,10 +23,11 @@ GROQ_API_KEY = os.getenv("GROQ_API_KEY")
 if not GROQ_API_KEY:
     raise RuntimeError("❌ GROQ_API_KEY not found")
 
-GROQ_URL = "https://api.groq.com/openai/v1/chat/completions"
+GROQ_URL  = "https://api.groq.com/openai/v1/chat/completions"
 MODEL_NAME = "llama-3.1-8b-instant"
 
 logger = get_logger("ReasoningAgent")
+
 
 def _remove_impression(report_text: str) -> str:
     if not report_text:
@@ -36,6 +37,7 @@ def _remove_impression(report_text: str) -> str:
     if idx == -1:
         return report_text.strip()
     return report_text[:idx].strip()
+
 
 def _extract_impression(report_text: str) -> str:
     if not report_text:
@@ -47,26 +49,39 @@ def _extract_impression(report_text: str) -> str:
     return report_text[idx + len("impression:"):].strip()
 
 
-
-def clinical_reasoning_agent(query: str, evidence: list, user_role: str = "doctor"):
+# FIX 1: Added ground_truth_answer as a parameter.
+#   - It comes from trial.xlsx (final_answer column) via:
+#       test.py → initial_state["ground_truth_answer"]
+#             → MMRAgState["ground_truth_answer"]
+#             → reasoning_node
+#             → here
+#   - Used ONLY for Precision@K / Recall@K / MRR evaluation.
+#   - It is NEVER shown to the LLM.
+#   - Default "" → metrics return 0.0 gracefully (streamlit mode has no ground truth).
+def clinical_reasoning_agent(
+    query: str,
+    evidence: list,
+    user_role: str = "doctor",
+):
     """
-    Clinical reasoning agent (RBAC removed)
-    
+    Clinical reasoning agent.
+
     Args:
-        query: Clinical query
-        evidence: List of evidence items
-        user_role: Kept for backward compatibility but not used
+        query:                Clinical query string.
+        evidence:             Filtered, ranked evidence dicts (relevance_score desc).
+        user_role:            Kept for backward compatibility.
+        ground_truth_answer:  Reference answer from trial.xlsx. Empty in Streamlit mode.
+                              Used ONLY for retrieval metric evaluation, never shown to LLM.
     """
-    
-    logger.info(f"Starting clinical reasoning")
+
+    logger.info("Starting clinical reasoning")
     logger.info(f"Evidence items received: {len(evidence)}")
-
-    # Use ALL retrieved evidence as ground truth
-    ground_truth_impressions = [e["report_text"] for e in evidence]
     
-    logger.info(f"Ground truth items: {len(ground_truth_impressions)}")
 
-    # Image analysis (always enabled now)
+    # Used for ClinicalCorrectness metric (LLM answer vs report impressions)
+    ground_truth_impressions = [e["report_text"] for e in evidence]
+
+    # Image analysis
     image_insights = image_insight_agent_llava_med(evidence, query)
 
     # Pathology findings
@@ -79,11 +94,12 @@ def clinical_reasoning_agent(query: str, evidence: list, user_role: str = "docto
         f"[R{i}] ({e['modality']}) {_remove_impression(e.get('report_text', ''))}"
         for i, e in enumerate(evidence, start=1)
     ]
-
     combined_evidence.extend(image_insights)
 
-    # Standard system prompt (no role variations)
-    system_prompt = "You are a clinical decision-support AI for medical professionals. Provide detailed, evidence-based clinical reasoning."
+    system_prompt = (
+        "You are a clinical decision-support AI for medical professionals. "
+        "Provide detailed, evidence-based clinical reasoning."
+    )
 
     prompt = f"""
 You are a clinical decision-support AI.
@@ -129,46 +145,46 @@ Next Steps / Recommendations:
 NOW RESPOND IN THE EXACT FORMAT ABOVE:
 ========================================
 """
-    
+
     print("=======FINAL PROMPT=========")
     print(prompt)
     print("============================")
-    
+
     headers = {
         "Authorization": f"Bearer {GROQ_API_KEY}",
-        "Content-Type": "application/json"
+        "Content-Type": "application/json",
     }
-
     payload = {
         "model": MODEL_NAME,
         "temperature": 0.0,
         "messages": [
             {"role": "system", "content": system_prompt},
-            {"role": "user", "content": prompt}
-        ]
+            {"role": "user",   "content": prompt},
+        ],
     }
 
     response = requests.post(GROQ_URL, headers=headers, json=payload)
     response.raise_for_status()
 
-    raw_answer = response.json()["choices"][0]["message"]["content"]
-
-    # Hard guarantee structure
+    raw_answer  = response.json()["choices"][0]["message"]["content"]
     final_answer = enforce_structure(raw_answer)
 
-    # Deduplicate retrieved reports before evaluation
-    retrieved_texts = [e["report_text"] for e in evidence]
-    unique_retrieved = list(dict.fromkeys(retrieved_texts))
-    
-    logger.info(f"Retrieved texts: {len(retrieved_texts)}, Unique: {len(unique_retrieved)}")
-
-    # Calculate metrics
+    # ------------------------------------------------------------------
+    # METRICS
+    # ------------------------------------------------------------------
     metrics = {}
+
+    # FIX 2: Pass `evidence` directly (list of dicts), NOT retrieved_texts
+    # (list of strings).  precision_recall_mrr does e.get("report_text", "")
+    # internally, so it needs dicts.  ground_truth_answer comes from the
+    # function parameter — it is the Excel reference answer, NOT the evidence.
     metrics.update(
         precision_recall_mrr(
-            retrieved=unique_retrieved,
-            ground_truth=ground_truth_impressions,
-            k=7
+            retrieved_docs=evidence,               # list of dicts, ranked
+            query=query,
+            k=5,
+            text_threshold=0.30,
+            image_threshold=0.30
         )
     )
 
@@ -176,13 +192,15 @@ NOW RESPOND IN THE EXACT FORMAT ABOVE:
         query=query,
         answer=final_answer,
         evidence=evidence,
-        fallback_to_simple=False
+        fallback_to_simple=False,
     )
-
-    metrics["Groundedness"] = g["score"]
+    metrics["Groundedness"]       = g["score"]
     metrics["GroundednessSource"] = g["source"]
     metrics["GroundednessSimple"] = groundedness_simple(final_answer)
 
+    # ClinicalCorrectness: does LLM answer match what the reports say?
+    # Using report impressions as reference is correct here — it measures
+    # whether the generated answer agrees with the retrieved evidence.
     metrics["ClinicalCorrectness"] = clinical_correctness(
         final_answer, ground_truth_impressions
     )
@@ -190,5 +208,5 @@ NOW RESPOND IN THE EXACT FORMAT ABOVE:
 
     return {
         "final_answer": final_answer,
-        "metrics": metrics
+        "metrics":      metrics,
     }

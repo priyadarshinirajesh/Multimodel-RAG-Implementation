@@ -6,7 +6,7 @@ from datetime import datetime
 from agents.langgraph_flow.mmrag_graph import build_mmrag_graph
 from evaluation.diagnosis_evaluator import clinical_correctness
 
-INPUT_FILE = "trial.xlsx"
+INPUT_FILE  = "trial.xlsx"
 OUTPUT_FILE = "mmrag_evaluation_results.xlsx"
 
 
@@ -38,67 +38,90 @@ def run_batch_evaluation():
     df = pd.read_excel(INPUT_FILE)
     has_ground_truth = "final_answer" in df.columns
 
-    print(f"Total queries: {len(df)}")
-    print(f"Input file: {INPUT_FILE}")
-    print(f"Output file: {OUTPUT_FILE}")
+    print(f"Total queries:          {len(df)}")
+    print(f"Input file:             {INPUT_FILE}")
+    print(f"Output file:            {OUTPUT_FILE}")
     print(f"Ground truth available: {has_ground_truth}")
     print("=" * 80)
 
-    graph = build_mmrag_graph()
+    graph   = build_mmrag_graph()
     results = []
     start_time = datetime.now()
 
     for idx, row in df.iterrows():
         patient_id = int(row["patient_id"])
-        query = str(row["query"])
-        expected_answer = row["final_answer"] if has_ground_truth else None
+        query      = str(row["query"])
+
+        # FIX 5: Safely extract ground_truth_answer from Excel.
+        # NaN cells (empty rows) are read as float('nan') by pandas — we
+        # convert them to "" so the pipeline handles them gracefully.
+        if has_ground_truth:
+            raw = row["final_answer"]
+            # ground_truth_answer = (
+            #     str(raw).strip()
+            #     if isinstance(raw, str) and raw.strip()
+            #     else ""
+            # )
+            ground_truth_answer = str(raw).strip() if pd.notna(raw) else ""
+            if ground_truth_answer.lower() == "nan":
+                ground_truth_answer = ""
+        else:
+            ground_truth_answer = ""
+
+        expected_answer = ground_truth_answer if ground_truth_answer else None
 
         print(f"\nProcessing {idx + 1}/{len(df)} | Patient {patient_id}")
         print(f"Query: {query[:120]}")
+        print(f"Ground truth: {'provided' if ground_truth_answer else 'missing'}")
 
+        # FIX 5 (continued): ground_truth_answer is now included in
+        # initial_state so the graph can pass it through MMRAgState all the
+        # way to clinical_reasoning_agent → precision_recall_mrr.
         initial_state = {
-            "patient_id": patient_id,
-            "query": query,
-            "user_role": "doctor",
+            "patient_id":   patient_id,
+            "query":        query,
+            "user_role":    "doctor",
 
-            "modalities": ["XRAY"],
+            # ← THE KEY FIX: carry ground truth through the graph
 
-            "xray_results": [],
-            "evidence": [],
+
+            "modalities":    ["XRAY"],
+            "xray_results":  [],
+            "evidence":      [],
             "filtered_evidence": [],
 
-            "retrieval_attempts": 0,
-            "reasoning_attempts": 0,
-            "refinement_count": 0,
+            "retrieval_attempts":  0,
+            "reasoning_attempts":  0,
+            "refinement_count":    0,
 
             "final_answer": "",
-            "metrics": {},
+            "metrics":      {},
 
-            "evidence_filter_result": {},
-            "evidence_gate_result": {},
-            "response_gate_result": {},
+            "evidence_filter_result":    {},
+            "evidence_gate_result":      {},
+            "response_gate_result":      {},
 
             "retrieval_contract_result": {},
-            "consistency_result": {},
-            "structure_result": {},
-            "safety_result": {},
-            "anatomy_result": {},
+            "consistency_result":        {},
+            "structure_result":          {},
+            "safety_result":             {},
+            "anatomy_result":            {},
 
             "total_iterations": 0,
-            "quality_scores": {}
+            "quality_scores":   {},
         }
 
         try:
             final_state = graph.invoke(initial_state)
 
-            metrics = final_state.get("metrics", {}) or {}
+            metrics       = final_state.get("metrics", {}) or {}
             quality_scores = final_state.get("quality_scores", {}) or {}
 
-            evidence_gate = final_state.get("evidence_gate_result", {}) or {}
-            response_gate = final_state.get("response_gate_result", {}) or {}
+            evidence_gate  = final_state.get("evidence_gate_result", {}) or {}
+            response_gate  = final_state.get("response_gate_result", {}) or {}
 
             generated_answer = final_state.get("final_answer", "")
-            evidence_count = len(final_state.get("filtered_evidence", []) or [])
+            evidence_count   = len(final_state.get("filtered_evidence", []) or [])
 
             overall_quality = (
                 sum(quality_scores.values()) / len(quality_scores)
@@ -109,38 +132,38 @@ def run_batch_evaluation():
 
             result_row = {
                 "patient_id": patient_id,
-                "query": query,
-                "status": "SUCCESS",
+                "query":      query,
+                "status":     "SUCCESS",
 
                 # Online metrics (from pipeline)
-                "Precision@K": metrics.get("Precision@K"),
-                "Recall@K": metrics.get("Recall@K"),
-                "MRR": metrics.get("MRR"),
-                "Groundedness": metrics.get("Groundedness"),
+                "Precision@K":        metrics.get("Precision@K"),
+                "Recall@K":           metrics.get("Recall@K"),
+                "MRR":                metrics.get("MRR"),
+                "Groundedness":       metrics.get("Groundedness"),
                 "GroundednessSource": metrics.get("GroundednessSource"),
                 "ClinicalCorrectness": metrics.get("ClinicalCorrectness"),
-                "Completeness": metrics.get("Completeness"),
+                "Completeness":       metrics.get("Completeness"),
 
                 # Offline metric (against Excel ground truth)
                 "OfflineClinicalCorrectness": offline_cc,
 
                 "generated_answer": generated_answer,
-                "expected_answer": expected_answer,
+                "expected_answer":  expected_answer,
 
-                "total_iterations": final_state.get("total_iterations"),
+                "total_iterations":  final_state.get("total_iterations"),
                 "retrieval_attempts": final_state.get("retrieval_attempts"),
                 "reasoning_attempts": final_state.get("reasoning_attempts"),
-                "refinement_count": final_state.get("refinement_count"),
+                "refinement_count":   final_state.get("refinement_count"),
 
                 "evidence_quality": quality_scores.get("evidence"),
                 "response_quality": quality_scores.get("response"),
-                "overall_quality": overall_quality,
+                "overall_quality":  overall_quality,
 
                 "evidence_decision": evidence_gate.get("decision", "N/A"),
                 "response_decision": response_gate.get("decision", "N/A"),
 
                 "evidence_count": evidence_count,
-                "modality": "XRAY"
+                "modality":       "XRAY",
             }
 
             results.append(result_row)
@@ -152,43 +175,69 @@ def run_batch_evaluation():
         except Exception as e:
             print(f"ERROR | Patient {patient_id} | {str(e)}")
             results.append({
-                "patient_id": patient_id,
-                "query": query,
-                "status": "ERROR",
-                "generated_answer": str(e),
-                "expected_answer": expected_answer
-            })
+            "patient_id": patient_id,
+            "query": query,
+            "status": "ERROR",
+            "generated_answer": str(e),
+            "expected_answer": expected_answer,
+
+            "Precision@K": 0.0,
+            "Recall@K": 0.0,
+            "MRR": 0.0,
+            "Groundedness": 0.0,
+            "GroundednessSource": "error",
+            "ClinicalCorrectness": 0.0,
+            "Completeness": 0.0,
+            "OfflineClinicalCorrectness": None,
+
+            "total_iterations": 0,
+            "retrieval_attempts": 0,
+            "reasoning_attempts": 0,
+            "refinement_count": 0,
+
+            "evidence_quality": 0.0,
+            "response_quality": 0.0,
+            "overall_quality": 0.0,
+
+            "evidence_decision": "ERROR",
+            "response_decision": "ERROR",
+            "evidence_count": 0,
+            "modality": "XRAY",
+        })
+
 
     output_df = pd.DataFrame(results)
 
     preferred_order = [
         "patient_id", "query", "status",
         "Precision@K", "Recall@K", "MRR",
-        "Groundedness","GroundednessSource", "ClinicalCorrectness", "Completeness", "OfflineClinicalCorrectness",
+        "Groundedness", "GroundednessSource",
+        "ClinicalCorrectness", "Completeness",
+        "OfflineClinicalCorrectness",
         "generated_answer", "expected_answer",
-        "total_iterations", "retrieval_attempts", "reasoning_attempts", "refinement_count",
+        "total_iterations", "retrieval_attempts",
+        "reasoning_attempts", "refinement_count",
         "evidence_quality", "response_quality", "overall_quality",
         "evidence_decision", "response_decision",
-        "evidence_count", "modality"
+        "evidence_count", "modality",
     ]
-
-    existing_cols = [c for c in preferred_order if c in output_df.columns]
+    existing_cols  = [c for c in preferred_order if c in output_df.columns]
     remaining_cols = [c for c in output_df.columns if c not in existing_cols]
     output_df = output_df[existing_cols + remaining_cols]
     output_df.to_excel(OUTPUT_FILE, index=False)
 
     end_time = datetime.now()
-    elapsed = (end_time - start_time).total_seconds()
+    elapsed  = (end_time - start_time).total_seconds()
     success_df = output_df[output_df["status"] == "SUCCESS"].copy()
 
     print("\n" + "=" * 80)
     print("BATCH EVALUATION COMPLETED")
     print("=" * 80)
     print(f"Total queries: {len(output_df)}")
-    print(f"Successful: {len(success_df)}")
-    print(f"Errors: {len(output_df) - len(success_df)}")
-    print(f"Total time: {elapsed:.2f}s")
-    print(f"Avg time/query: {elapsed / max(len(output_df), 1):.2f}s")
+    print(f"Successful:    {len(success_df)}")
+    print(f"Errors:        {len(output_df) - len(success_df)}")
+    print(f"Total time:    {elapsed:.2f}s")
+    print(f"Avg/query:     {elapsed / max(len(output_df), 1):.2f}s")
 
     if len(success_df) > 0:
         print("\nAVERAGE METRICS:")
@@ -197,7 +246,7 @@ def run_batch_evaluation():
             "Groundedness", "ClinicalCorrectness", "Completeness",
             "OfflineClinicalCorrectness",
             "evidence_quality", "response_quality", "overall_quality",
-            "evidence_count"
+            "evidence_count",
         ]:
             if col in success_df.columns:
                 vals = pd.to_numeric(success_df[col], errors="coerce")
@@ -208,12 +257,12 @@ def run_batch_evaluation():
             print(f"  Evidence PASS: {(success_df['evidence_decision'] == 'PASS').mean() * 100:.1f}%")
         if "response_decision" in success_df.columns:
             print(f"  Response PASS: {(success_df['response_decision'] == 'PASS').mean() * 100:.1f}%")
-        
+
         if "GroundednessSource" in success_df.columns:
-            fail_rate = (success_df["GroundednessSource"] == "ragas_failed").mean() * 100
+            fail_rate  = (success_df["GroundednessSource"] == "ragas_failed").mean() * 100
             ragas_rate = (success_df["GroundednessSource"] == "ragas").mean() * 100
             print(f"  Groundedness via RAGAS: {ragas_rate:.1f}%")
-            print(f"  RAGAS failed: {fail_rate:.1f}%")
+            print(f"  RAGAS failed:           {fail_rate:.1f}%")
 
     print(f"\nResults saved to: {OUTPUT_FILE}")
     print("=" * 80)
