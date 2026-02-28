@@ -17,63 +17,19 @@ from embeddings.image_embeddings import embed_image
 
 _embedder = SentenceTransformer("all-MiniLM-L6-v2")
 
+
 def _cosine(a, b) -> float:
     a = np.array(a).reshape(1, -1)
     b = np.array(b).reshape(1, -1)
     return float(cosine_similarity(a, b)[0][0])
 
-def _item_relevance_score(e: dict, query_vec, text_w=0.5, image_w=0.5):
-    text_score = None
-    image_score = None
 
-    text = (e.get("report_text") or "").strip()
-    if text:
-        text_score = _cosine(query_vec, embed_text(text))
-
-    image_path = e.get("image_path")
-    if image_path and os.path.exists(image_path):
-        image_score = _cosine(query_vec, embed_image(image_path))
-
-    if text_score is not None and image_score is not None:
-        return text_w * text_score + image_w * image_score
-    if text_score is not None:
-        return text_score
-    if image_score is not None:
-        return image_score
-    return -1.0
-
-def _multimodal_relevance_score(evidence_item: dict, query_vec) -> float:
-    text_score = None
-    image_score = None
-
-    report_text = (evidence_item.get("report_text") or "").strip()
-    image_path = evidence_item.get("image_path")
-
-    # Text relevance
-    if report_text:
-        try:
-            text_vec = embed_text(report_text)
-            text_score = _cosine(query_vec, text_vec)
-        except Exception:
-            text_score = None
-
-    # Image relevance
-    if image_path and os.path.exists(image_path):
-        try:
-            img_vec = embed_image(image_path)
-            image_score = _cosine(query_vec, img_vec)
-        except Exception:
-            image_score = None
-
-    # Fusion rule
-    if text_score is not None and image_score is not None:
-        return max(text_score, image_score)  # strict "either modality relevant"
-    if text_score is not None:
-        return text_score
-    if image_score is not None:
-        return image_score
-    return -1.0
-
+# Issue 6 FIX: Removed _item_relevance_score and _multimodal_relevance_score.
+# Both functions were dead code — never called anywhere in the active metric
+# path.  Their presence created maintenance confusion because they used a
+# different fusion strategy (weighted average / max) than the inline logic
+# inside precision_recall_mrr, making it easy to accidentally use the wrong
+# function in future edits.  Deleted entirely.
 
 
 def _remove_impression(report_text: str) -> str:
@@ -86,66 +42,46 @@ def _remove_impression(report_text: str) -> str:
     return report_text[:idx].strip()
 
 
-# def precision_recall_mrr(retrieved_docs: list, query: str, k: int = 7, relevance_threshold: float = 0.28) -> dict:
-#     """
-#     Query-based multimodal retrieval metrics.
-#     A retrieved item is relevant if fused(text,image) similarity with query >= threshold.
-#     """
-#     if not query or not query.strip():
-#         return {"Precision@K": 0.0, "Recall@K": 0.0, "MRR": 0.0}
-#     if not retrieved_docs:
-#         return {"Precision@K": 0.0, "Recall@K": 0.0, "MRR": 0.0}
-
-#     query_vec = embed_text(query)
-#     top_k_docs = retrieved_docs[:k]
-
-#     topk_scores = [_multimodal_relevance_score(e, query_vec) for e in top_k_docs]
-#     all_scores = [_multimodal_relevance_score(e, query_vec) for e in retrieved_docs]
-
-#     topk_relevant = [s >= relevance_threshold for s in topk_scores]
-#     all_relevant = [s >= relevance_threshold for s in all_scores]
-
-#     tp_at_k = sum(topk_relevant)
-#     precision = tp_at_k / k if k > 0 else 0.0
-
-#     total_relevant = sum(all_relevant)
-#     recall = tp_at_k / total_relevant if total_relevant > 0 else 0.0
-
-#     mrr = 0.0
-#     for rank, is_rel in enumerate(topk_relevant, start=1):
-#         if is_rel:
-#             mrr = 1.0 / rank
-#             break
-
-#     return {
-#         "Precision@K": round(precision, 3),
-#         "Recall@K": round(recall, 3),
-#         "MRR": round(mrr, 3),
-#     }
-
 def precision_recall_mrr(
     retrieved_docs: list,
     query: str,
     k: int = 5,
     text_threshold: float = 0.28,
     image_threshold: float = 0.24,
-):
+) -> dict:
+    """
+    Query-based multimodal retrieval metrics.
+
+    Relevance is determined by cosine similarity between each evidence unit
+    (indication / comparison / findings text, or X-ray image) and the query
+    embedding.  This is "pool-based" IR evaluation: no external ground-truth
+    set is needed, and Recall@K is measured against the total relevant units
+    in the retrieved pool (not an external GT set).
+
+    Precision@K formula  : TP_in_top_K / K   (fixed K denominator — Issue 5)
+    Recall@K formula     : TP_in_top_K / total_relevant_in_pool
+    MRR                  : 1 / rank_of_first_relevant_hit in top-K
+
+    NOTE for research papers: because Recall uses a pool-based denominator
+    (not an external ground-truth set), it should be described as
+    "pool-based Recall@K" rather than true Recall@K.
+    """
     if not query or not query.strip() or not retrieved_docs:
         return {"Precision@K": 0.0, "Recall@K": 0.0, "MRR": 0.0}
 
     query_vec = embed_text(query)
 
-    # 1) Collect unique text units in sets
-    indication_set = set()
-    comparison_set = set()
-    findings_set = set()
-
-    image_set = set()
+    # ── 1. Collect unique text / image units from retrieved evidence ──────────
+    indication_set  = set()
+    comparison_set  = set()
+    findings_set    = set()
+    image_set       = set()
 
     for e in retrieved_docs:
-        ind = (e.get("indication") or "").strip()
-        cmp_ = (e.get("comparison") or "").strip()
-        fnd = (e.get("findings") or "").strip()
+        ind  = (e.get("indication")  or "").strip()
+        cmp_ = (e.get("comparison")  or "").strip()
+        fnd  = (e.get("findings")    or "").strip()
+        img  = e.get("image_path")
 
         if ind:
             indication_set.add(ind)
@@ -153,55 +89,51 @@ def precision_recall_mrr(
             comparison_set.add(cmp_)
         if fnd:
             findings_set.add(fnd)
-
-        img = e.get("image_path")
         if img and os.path.exists(img):
             image_set.add(img)
 
-    # 2) Convert sets -> lists (as you requested)
-    indication_list = list(indication_set)
-    comparison_list = list(comparison_set)
-    findings_list = list(findings_set)
-    image_list = list(image_set)
-
-    # 3) Build unit list (dynamic size)
-    units = []
-    for t in indication_list:
-        units.append(("indication", "text", t))
-    for t in comparison_list:
-        units.append(("comparison", "text", t))
-    for t in findings_list:
-        units.append(("findings", "text", t))
-    for p in image_list:
-        units.append(("image", "image", p))
+    # ── 2. Build scored unit list ─────────────────────────────────────────────
+    units = (
+        [("indication", "text",  t) for t in indication_set]
+        + [("comparison", "text",  t) for t in comparison_set]
+        + [("findings",   "text",  t) for t in findings_set]
+        + [("image",      "image", p) for p in image_set]
+    )
 
     if not units:
         return {"Precision@K": 0.0, "Recall@K": 0.0, "MRR": 0.0}
 
-
-    # 4) Score each unit vs query
+    # ── 3. Score each unit vs query ───────────────────────────────────────────
     scored = []
     for name, kind, value in units:
         if kind == "text":
-            s = _cosine(query_vec, embed_text(value))
+            s      = _cosine(query_vec, embed_text(value))
             is_rel = s >= text_threshold
         else:
-            s = _cosine(query_vec, embed_image(value))
+            s      = _cosine(query_vec, embed_image(value))
             is_rel = s >= image_threshold
         scored.append((name, kind, value, s, is_rel))
 
-    # 5) Rank by similarity descending
+    # ── 4. Rank by similarity descending ─────────────────────────────────────
     scored.sort(key=lambda x: x[3], reverse=True)
 
-    # 6) Dynamic K clamp (important)
+    # ── 5. Compute metrics ────────────────────────────────────────────────────
     k_eff = min(k, len(scored))
-    topk = scored[:k_eff]
+    topk  = scored[:k_eff]
 
     tp = sum(1 for x in topk if x[4])
-    precision = tp / k_eff if k_eff > 0 else 0.0
 
+    # Issue 5 FIX — Precision@K: always divide by fixed K, not k_eff.
+    # Using k_eff (= min(k, pool_size)) inflates precision when fewer than K
+    # units exist (denominator shrinks while TP stays the same).
+    # Textbook formula: Precision@K = TP_in_top_K / K
+    precision = tp / k if k > 0 else 0.0
+
+    # Issue 5 FIX — Recall@K: denominator is ALL relevant units in the FULL
+    # scored pool (not just top-k), which is the standard pool-based recall
+    # used in IR benchmarks when no separate ground-truth set is available.
     total_rel = sum(1 for x in scored if x[4])
-    recall = tp / total_rel if total_rel > 0 else 0.0
+    recall    = tp / total_rel if total_rel > 0 else 0.0
 
     mrr = 0.0
     for rank, x in enumerate(topk, start=1):
@@ -210,11 +142,10 @@ def precision_recall_mrr(
             break
 
     return {
-        "Precision@K": precision,
-        "Recall@K": recall,
-        "MRR": mrr,
+        "Precision@K": round(precision, 3),
+        "Recall@K":    round(recall,    3),
+        "MRR":         round(mrr,       3),
     }
-
 
 
 def groundedness(answer: str) -> float:
@@ -297,7 +228,7 @@ def groundedness_ragas(
     query: str,
     answer: str,
     evidence: list,
-    fallback_to_simple: bool = False
+    fallback_to_simple: bool = False,
 ) -> dict:
     contexts = _extract_contexts(evidence)
     if not query or not answer or not contexts:
@@ -329,10 +260,14 @@ def groundedness_ragas(
             except Exception:
                 pass
 
-        if score is None:
+        # Issue 10 FIX: guard against NaN / inf from the RAGAS judge.
+        # float(nan) succeeds silently; round(nan, 3) returns nan which then
+        # propagates into Excel exports as a blank/invalid cell.
+        # np.isfinite catches both NaN and ±inf.
+        if score is None or not np.isfinite(score):
             return {"score": 0.0, "source": "ragas_failed"}
 
-        return {"score": round(score, 3), "source": "ragas"}
+        return {"score": round(float(score), 3), "source": "ragas"}
 
     except Exception:
         return {"score": 0.0, "source": "ragas_failed"}

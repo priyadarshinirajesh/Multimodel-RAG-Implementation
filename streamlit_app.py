@@ -57,8 +57,6 @@ st.markdown("""
         padding-left: 1rem;
         margin: 1rem 0;
     }
-    
-    
 </style>
 """, unsafe_allow_html=True)
 
@@ -66,23 +64,40 @@ st.markdown("""
 # HEADER
 # ============================================================
 
-st.markdown('<div class="main-header"> Multimodal Clinical Decision Support System</div>', unsafe_allow_html=True)
+st.markdown('<div class="main-header">Multimodal Clinical Decision Support System</div>', unsafe_allow_html=True)
 st.markdown('<div class="sub-header">AI-powered clinical reasoning with Quality Gates & Local Feedback Loops</div>', unsafe_allow_html=True)
 
 # ============================================================
-# SIDEBAR — thresholds & retries only
+# SIDEBAR
+# Issue 9 FIX: slider/input values are now passed into initial_state and
+# flow through MMRAgState to the gate nodes and decision functions.
+# Previously these controls only affected display delta calculations in the
+# metrics section — pipeline behaviour was unchanged regardless of the
+# user's selections.
 # ============================================================
 
 with st.sidebar:
-    st.header(" Configuration")
+    st.header("Configuration")
 
     st.subheader("Quality Thresholds")
-    evidence_threshold = st.slider("Evidence Quality", 0.0, 1.0, 0.6, 0.05)
-    response_threshold = st.slider("Response Quality", 0.0, 1.0, 0.7, 0.05)
+    evidence_threshold = st.slider(
+        "Evidence Quality Threshold", 0.0, 1.0, 0.4, 0.05,
+        help="EvidenceQualityGate pass threshold. Evidence gate score must exceed this to proceed."
+    )
+    response_threshold = st.slider(
+        "Response Quality Threshold", 0.0, 1.0, 0.7, 0.05,
+        help="ResponseQualityGate pass threshold. Response gate score must exceed this to finalize."
+    )
 
     st.subheader("Retry Limits")
-    max_retrieval_retries = st.number_input("Max Retrieval Retries", 1, 5, 2)
-    max_reasoning_retries = st.number_input("Max Reasoning Retries", 1, 5, 2)
+    max_retrieval_retries = st.number_input(
+        "Max Retrieval Retries", 1, 5, 2,
+        help="Maximum number of xray fetch + aggregation cycles before forcing proceed."
+    )
+    max_refinement_retries = st.number_input(
+        "Max Refinement Retries", 1, 5, 2,
+        help="Maximum response_refine cycles before force-finalizing the response."
+    )
 
     st.markdown("**ℹ About**")
     st.markdown("""
@@ -95,24 +110,17 @@ with st.sidebar:
     - Pathology detection (DenseNet-121)
     """)
 
-
-
 # ============================================================
 # INPUT
 # ============================================================
 
 st.markdown("---")
-st.subheader(" Input Parameters")
+st.subheader("Input Parameters")
 
 col1, col2 = st.columns([1, 3])
 
 with col1:
-    patient_id = st.number_input(
-        "Patient ID",
-        min_value=1,
-        step=1,
-        value=1
-    )
+    patient_id = st.number_input("Patient ID", min_value=1, step=1, value=1)
 
 with col2:
     query = st.text_area(
@@ -121,7 +129,7 @@ with col2:
         height=100
     )
 
-run_button = st.button("🔬 Run Analysis", type="primary", width="stretch")
+run_button = st.button("🔬 Run Analysis", type="primary", use_container_width=True)
 
 # ============================================================
 # RUN PIPELINE
@@ -129,72 +137,93 @@ run_button = st.button("🔬 Run Analysis", type="primary", width="stretch")
 
 if run_button and query.strip():
 
-    with st.spinner(" Running multi-agent pipeline with quality gates..."):
+    with st.spinner("Running multi-agent pipeline with quality gates..."):
 
         graph = build_mmrag_graph()
 
+        # Issue 9 FIX: pass all UI-configured values into initial_state.
+        # They are typed in MMRAgState and read by:
+        #   - evidence_quality_gate_node  → EvidenceQualityGate(threshold=...)
+        #   - response_quality_gate_node  → ResponseQualityGate(threshold=...)
+        #   - should_retry_xray           → max_r = state.get("max_retrieval_retries", 2)
+        #   - should_retry_retrieval      → max_r = state.get("max_retrieval_retries", 2)
+        #   - should_refine_response      → max_ref = state.get("max_refinement_retries", 2)
         initial_state = {
-            "patient_id": int(patient_id),
-            "query": query,
+            "patient_id":   int(patient_id),
+            "query":        query,
+            "user_role":    "doctor",
 
+            # ── UI-controlled thresholds & retry limits (Issue 9) ──────────
+            "evidence_threshold":     float(evidence_threshold),
+            "response_threshold":     float(response_threshold),
+            "max_retrieval_retries":  int(max_retrieval_retries),
+            "max_refinement_retries": int(max_refinement_retries),
 
             # Routing
-            "modalities": ["XRAY"],
+            "modalities":          ["XRAY"],
             "routing_verification": {},
-            "routing_gate_result": {},
+            "routing_gate_result":  {},
 
             # Retrieval
             "xray_results": [],
-            "ct_results": [],
-            "mri_results": [],
+            "ct_results":   [],
+            "mri_results":  [],
 
             # Evidence
-            "evidence": [],
+            "evidence":          [],
             "filtered_evidence": [],
             "evidence_filter_result": {},
-            "evidence_gate_result": {},
-            "retrieval_attempts": 0,
+            "evidence_gate_result":   {},
+            "retrieval_attempts":     0,
 
             # Reasoning
-            "final_answer": "",
-            "metrics": {},
+            "final_answer":      "",
+            "metrics":           {},
             "response_gate_result": {},
-            "refinement_result": {},
-            "reasoning_attempts": 0,
-            "refinement_count": 0,
+            "refinement_result":    {},
+            "reasoning_attempts":   0,
+            "refinement_count":     0,
+
+            # Issue 2 support: track forced completion
+            "forced_complete": False,
 
             # Global
             "total_iterations": 0,
-            "quality_scores": {}
+            "quality_scores":   {},
         }
 
-        final_state = graph.invoke(
-            initial_state,
-            config={"recursion_limit":50}
-        )
+        final_state = graph.invoke(initial_state, config={"recursion_limit": 50})
 
-    st.success(" Pipeline completed!")
+    st.success("Pipeline completed!")
+
+    # Warn if response was force-finalized (Issue 2)
+    if final_state.get("forced_complete", False):
+        st.warning(
+            "⚠️ **Response was force-finalized**: the pipeline reached the maximum "
+            f"number of refinement retries ({max_refinement_retries}) before the "
+            "response quality gate passed. Consider reviewing this response manually "
+            "or increasing the Max Refinement Retries in the sidebar."
+        )
 
     # ============================================================
     # PIPELINE SUMMARY
     # ============================================================
 
     st.markdown("---")
-    st.header(" Pipeline Execution Summary")
+    st.header("Pipeline Execution Summary")
 
-    col1, col2, col3 = st.columns(3)
+    col1, col2, col3, col4 = st.columns(4)
 
-    with col1:
-        total_iterations = final_state.get('total_iterations', 0)
-        st.metric("Total Iterations", total_iterations)
+    total_iterations   = final_state.get("total_iterations", 0)
+    retrieval_attempts = final_state.get("retrieval_attempts", 0)
+    reasoning_attempts = final_state.get("reasoning_attempts", 0)
+    refinement_count   = final_state.get("refinement_count", 0)
 
-    with col2:
-        retrieval_attempts = final_state.get('retrieval_attempts', 0)
-        st.metric("Retrieval Attempts", retrieval_attempts)
-
-    with col3:
-        reasoning_attempts = final_state.get('reasoning_attempts', 0)
-        st.metric("Reasoning Attempts", reasoning_attempts)
+    col1.metric("Total Iterations",   total_iterations,
+                help="retrieval + reasoning + refinement cycles (Issue 3 fix: now includes refinements)")
+    col2.metric("Retrieval Attempts", retrieval_attempts)
+    col3.metric("Reasoning Attempts", reasoning_attempts)
+    col4.metric("Refinement Count",   refinement_count)
 
     # ============================================================
     # QUALITY GATES
@@ -203,33 +232,33 @@ if run_button and query.strip():
     st.markdown("---")
     st.header("✅ Quality Gate Results")
 
-    quality_scores = final_state.get('quality_scores', {})
+    quality_scores = final_state.get("quality_scores", {})
 
     col1, col2, col3 = st.columns(3)
 
     with col1:
-        evidence_score = quality_scores.get('evidence', 0)
+        evidence_score = quality_scores.get("evidence", 0)
         st.metric(
             "Evidence Quality",
             f"{evidence_score:.2f}",
             delta=f"{evidence_score - evidence_threshold:.2f}" if evidence_score else None
         )
         if evidence_score >= evidence_threshold:
-            st.markdown('<div class="quality-badge-pass"> PASS</div>', unsafe_allow_html=True)
+            st.markdown('<div class="quality-badge-pass">PASS</div>', unsafe_allow_html=True)
         else:
-            st.markdown('<div class="quality-badge-fail"> ATTENTION</div>', unsafe_allow_html=True)
+            st.markdown('<div class="quality-badge-fail">ATTENTION</div>', unsafe_allow_html=True)
 
     with col2:
-        response_score = quality_scores.get('response', 0)
+        response_score = quality_scores.get("response", 0)
         st.metric(
             "Response Quality",
             f"{response_score:.2f}",
             delta=f"{response_score - response_threshold:.2f}" if response_score else None
         )
         if response_score >= response_threshold:
-            st.markdown('<div class="quality-badge-pass"> PASS</div>', unsafe_allow_html=True)
+            st.markdown('<div class="quality-badge-pass">PASS</div>', unsafe_allow_html=True)
         else:
-            st.markdown('<div class="quality-badge-fail"> ATTENTION</div>', unsafe_allow_html=True)
+            st.markdown('<div class="quality-badge-fail">ATTENTION</div>', unsafe_allow_html=True)
 
     with col3:
         avg_quality = (
@@ -237,73 +266,63 @@ if run_button and query.strip():
         )
         st.metric("Overall Quality", f"{avg_quality:.2f}")
         if avg_quality >= 0.7:
-            st.markdown('<div class="quality-badge-pass"> EXCELLENT</div>', unsafe_allow_html=True)
+            st.markdown('<div class="quality-badge-pass">EXCELLENT</div>', unsafe_allow_html=True)
         elif avg_quality >= 0.5:
-            st.markdown('<div class="quality-badge-pass"> GOOD</div>', unsafe_allow_html=True)
+            st.markdown('<div class="quality-badge-pass">GOOD</div>', unsafe_allow_html=True)
         else:
-            st.markdown('<div class="quality-badge-fail"> NEEDS REVIEW</div>', unsafe_allow_html=True)
+            st.markdown('<div class="quality-badge-fail">NEEDS REVIEW</div>', unsafe_allow_html=True)
 
     # ============================================================
     # STAGE BREAKDOWN
     # ============================================================
 
     st.markdown("---")
-    st.header(" Stage-by-Stage Breakdown")
+    st.header("Stage-by-Stage Breakdown")
 
-    # Stage 1: Evidence Retrieval
     with st.expander("**Stage 1: Evidence Retrieval**", expanded=False):
-        evidence_gate = final_state.get('evidence_gate_result', {})
-        filter_result = final_state.get('evidence_filter_result', {})
+        evidence_gate = final_state.get("evidence_gate_result", {})
+        filter_result = final_state.get("evidence_filter_result", {})
 
         col1, col2, col3 = st.columns(3)
+        col1.metric("Original Evidence",  len(final_state.get("evidence", [])))
+        col2.metric("Filtered Evidence",  len(final_state.get("filtered_evidence", [])))
+        removed = filter_result.get("removed_count", 0)
+        col3.metric("Removed", removed, delta=f"-{removed}")
 
-        with col1:
-            original_count = len(final_state.get('evidence', []))
-            st.metric("Original Evidence", original_count)
-
-        with col2:
-            filtered_count = len(final_state.get('filtered_evidence', []))
-            st.metric("Filtered Evidence", filtered_count)
-
-        with col3:
-            removed_count = filter_result.get('removed_count', 0)
-            st.metric("Removed", removed_count, delta=f"-{removed_count}")
-
-        st.markdown("**Filter Quality:**")
         st.write(f"Quality Score: {filter_result.get('quality_score', 0):.2f}")
         st.write(f"Gate Decision: {evidence_gate.get('decision', 'N/A')}")
+        if filter_result.get("feedback"):
+            st.info(filter_result["feedback"])
 
-        if filter_result.get('feedback'):
-            st.info(filter_result['feedback'])
+        # Show consistency check result
+        consistency = final_state.get("consistency_result", {})
+        if consistency:
+            if consistency.get("passed"):
+                st.success("✅ Evidence consistency check passed")
+            else:
+                issues = consistency.get("issues", [])
+                st.warning(f"⚠️ Consistency issues: {', '.join(issues)}")
 
-    # Stage 3: Clinical Reasoning
-    with st.expander("**Stage 3: Clinical Reasoning** ", expanded=False):
-        response_gate = final_state.get('response_gate_result', {})
-        refinement = final_state.get('refinement_result', {})
+    with st.expander("**Stage 3: Clinical Reasoning**", expanded=False):
+        response_gate = final_state.get("response_gate_result", {})
+        refinement    = final_state.get("refinement_result", {})
 
         col1, col2 = st.columns(2)
-
         with col1:
-            st.markdown("**Response Quality:**")
             st.write(f"Score: {response_gate.get('score', 0):.2f}")
             st.write(f"Decision: {response_gate.get('decision', 'N/A')}")
-
         with col2:
             if refinement:
-                st.markdown("**Refinements Applied:**")
-                refinements = refinement.get('refinements_applied', [])
-                if refinements:
-                    for ref in refinements:
-                        st.markdown(f"- {ref.replace('_', ' ').title()}")
-                else:
-                    st.write("No refinements needed")
+                refs = refinement.get("refinements_applied", [])
+                for ref in refs:
+                    st.markdown(f"- {ref.replace('_', ' ').title()}")
 
     # ============================================================
     # RETRIEVED EVIDENCE
     # ============================================================
 
     st.markdown("---")
-    st.header(" Retrieved Evidence")
+    st.header("Retrieved Evidence")
 
     filtered_evidence = final_state.get("filtered_evidence", [])
 
@@ -314,10 +333,9 @@ if run_button and query.strip():
 
         modality_counts = {}
         for e in filtered_evidence:
-            mod = e.get('modality', 'Unknown')
+            mod = e.get("modality", "Unknown")
             modality_counts[mod] = modality_counts.get(mod, 0) + 1
 
-        st.markdown("**Evidence by Modality:**")
         cols = st.columns(len(modality_counts))
         for col, (mod, count) in zip(cols, modality_counts.items()):
             col.metric(mod, count)
@@ -326,154 +344,93 @@ if run_button and query.strip():
 
         for idx, e in enumerate(filtered_evidence, start=1):
             with st.expander(f"**Evidence {idx}** — {e.get('modality', 'N/A')} (Relevance: {e.get('relevance_score', 0):.2f})"):
-
-                col1, col2 = st.columns([2, 1])
-
-                with col1:
+                c1, c2 = st.columns([2, 1])
+                with c1:
                     st.markdown("**Report Text:**")
-                    st.write(e.get('report_text', 'N/A'))
+                    st.write(e.get("report_text", "N/A"))
                     st.markdown(f"**Organ:** {e.get('organ', 'N/A')}")
                     st.markdown(f"**Modality:** {e.get('modality', 'N/A')}")
-
-                with col2:
-                    # RBAC: nurses have has_image=False from rbac_filter
-                    if e.get('has_image') and e.get('image_path') and os.path.exists(e['image_path']):
+                with c2:
+                    if e.get("has_image") and e.get("image_path") and os.path.exists(e["image_path"]):
                         try:
-                            img = Image.open(e['image_path'])
-                            st.image(img, caption=f"Image {idx}", width="stretch")
+                            st.image(Image.open(e["image_path"]), caption=f"Image {idx}", use_container_width=True)
                         except Exception as ex:
                             st.warning(f"Unable to display image: {ex}")
                     else:
                         st.info("No image available")
 
-
     # ============================================================
-    # PATHOLOGY DETECTION RESULTS (NEW SECTION)
+    # PATHOLOGY DETECTION RESULTS
     # ============================================================
 
     st.markdown("---")
-    st.header(" Pathology Detection Results")
+    st.header("Pathology Detection Results")
 
-    # Check if any evidence has pathology scores
     has_pathology_data = any(
         "pathology_scores" in e and e["pathology_scores"]
         for e in filtered_evidence
     )
 
-    max_scores = {}
+    max_scores       = {}
     sorted_pathologies = []
 
     if has_pathology_data:
-        
-        # Aggregate all pathology scores across evidence
         aggregated_scores = {}
         for e in filtered_evidence:
-            if "pathology_scores" in e:
-                for pathology, score in e["pathology_scores"].items():
-                    if pathology not in aggregated_scores:
-                        aggregated_scores[pathology] = []
-                    aggregated_scores[pathology].append(score)
-        
-        # Calculate max score per pathology
-        max_scores = {
-            pathology: max(scores)
-            for pathology, scores in aggregated_scores.items()
-        }
-        
-        # Sort by score
-        sorted_pathologies = sorted(
-            max_scores.items(),
-            key=lambda x: x[1],
-            reverse=True
-        )[:8]  # Top 8
-        
-        # Create bar chart
+            for pathology, score in e.get("pathology_scores", {}).items():
+                aggregated_scores.setdefault(pathology, []).append(score)
+
+        max_scores = {p: max(scores) for p, scores in aggregated_scores.items()}
+        sorted_pathologies = sorted(max_scores.items(), key=lambda x: x[1], reverse=True)[:8]
+
         if sorted_pathologies:
             import plotly.graph_objects as go
-            
-            pathology_names = [p[0] for p in sorted_pathologies]
-            scores = [p[1] * 100 for p in sorted_pathologies]  # Convert to percentage
-            
-            # Color based on confidence
+
+            names  = [p[0] for p in sorted_pathologies]
+            scores = [p[1] * 100 for p in sorted_pathologies]
             colors = [
-                'rgb(220, 53, 69)' if s >= 70 else    # Red for high
-                'rgb(255, 193, 7)' if s >= 50 else    # Yellow for moderate
-                'rgb(40, 167, 69)'                     # Green for low
+                "rgb(220,53,69)"  if s >= 70 else
+                "rgb(255,193,7)"  if s >= 50 else
+                "rgb(40,167,69)"
                 for s in scores
             ]
-            
+
             fig = go.Figure(go.Bar(
-                x=scores,
-                y=pathology_names,
-                orientation='h',
+                x=scores, y=names, orientation="h",
                 marker=dict(color=colors),
-                text=[f'{s:.1f}%' for s in scores],
-                textposition='auto',
+                text=[f"{s:.1f}%" for s in scores],
+                textposition="auto",
             ))
-            
             fig.update_layout(
-                title="Detected Pathologies (Maximum Confidence Across All Images)",
-                xaxis_title="Confidence (%)",
-                yaxis_title="Pathology",
-                height=400,
-                showlegend=False
+                title="Detected Pathologies (Max Confidence Across All Images)",
+                xaxis_title="Confidence (%)", yaxis_title="Pathology",
+                height=400, showlegend=False,
             )
-            
-            st.plotly_chart(fig, width="stretch")
-            
-            # Add legend for confidence levels
+            st.plotly_chart(fig, use_container_width=True)
+
             col1, col2, col3 = st.columns(3)
-            with col1:
-                st.markdown("🔴 **High Confidence** (≥70%)")
-            with col2:
-                st.markdown("🟡 **Moderate Confidence** (40-70%)")
-            with col3:
-                st.markdown("🟢 **Low Confidence** (<40%)")
-        
-        # Show detailed findings per evidence item
+            col1.markdown("🔴 **High Confidence** (≥70%)")
+            col2.markdown("🟡 **Moderate Confidence** (40–70%)")
+            col3.markdown("🟢 **Low Confidence** (<40%)")
+
         st.markdown("### Detailed Findings by Image")
-        
         for idx, e in enumerate(filtered_evidence, start=1):
-            if "pathology_findings" in e and e["pathology_findings"]:
+            if e.get("pathology_findings"):
                 with st.expander(f"Evidence {idx} - Pathology Analysis"):
                     st.markdown(e["pathology_findings"])
-                    
-                    # Show scores if available (for doctors)
-                    # Show scores if available (for doctors)
                     if "pathology_scores" in e:
-                        st.markdown("**Detailed Scores:**")
-                        
-                        # ✅ Sort by probability (highest first) and show top 10
                         sorted_scores = sorted(
-                            e["pathology_scores"].items(), 
-                            key=lambda x: x[1], 
-                            reverse=True
+                            e["pathology_scores"].items(), key=lambda x: x[1], reverse=True
                         )
-                        
-                        # ✅ Filter: show anything above 1% (instead of 10%)
-                        filtered_scores = [
-                            (pathology, score) 
-                            for pathology, score in sorted_scores 
-                            if score > 0.01  # 1% threshold
-                        ][:10]  # Top 10 max
-                        
+                        filtered_scores = [(p, s) for p, s in sorted_scores if s > 0.01][:10]
                         if filtered_scores:
-                            scores_df = pd.DataFrame([
-                                {
-                                    "Pathology": pathology, 
-                                    "Probability": f"{score*100:.2f}%",
-                                    "Confidence": (
-                                        "🔴 High" if score >= 0.7 else 
-                                        "🟡 Moderate" if score >= 0.5 else 
-                                        "🟢 Low"
-                                    )
-                                }
-                                for pathology, score in filtered_scores
-                            ])
-                            st.dataframe(scores_df, hide_index=True, width="stretch")
+                            st.dataframe(pd.DataFrame([{
+                                "Pathology": p,
+                                "Probability": f"{s*100:.2f}%",
+                                "Confidence": "🔴 High" if s >= 0.7 else "🟡 Moderate" if s >= 0.5 else "🟢 Low",
+                            } for p, s in filtered_scores]), hide_index=True, use_container_width=True)
                         else:
                             st.info("ℹ All pathology scores below 1% threshold")
-
     else:
         st.info("No pathology detection data available for this query.")
 
@@ -486,86 +443,48 @@ if run_button and query.strip():
 
     final_answer = final_state.get("final_answer", "No response generated")
 
-    sections = {
-        "diagnosis": "",
-        "evidence": "",
-        "recommendations": ""
-    }
-
+    sections = {"diagnosis": "", "evidence": "", "recommendations": ""}
     current_section = None
-    lines = final_answer.split('\n')
 
-    for line in lines:
-        line_lower = line.lower().strip()
-
-        if 'diagnosis' in line_lower or 'impression' in line_lower:
-            current_section = "diagnosis"
-            continue
-        elif 'supporting evidence' in line_lower or 'evidence' in line_lower:
-            current_section = "evidence"
-            continue
-        elif 'next steps' in line_lower or 'recommendation' in line_lower:
-            current_section = "recommendations"
-            continue
-
+    for line in final_answer.split("\n"):
+        ll = line.lower().strip()
+        if "diagnosis" in ll or "impression" in ll:
+            current_section = "diagnosis"; continue
+        elif "supporting evidence" in ll or "evidence:" in ll:
+            current_section = "evidence"; continue
+        elif "next steps" in ll or "recommendation" in ll:
+            current_section = "recommendations"; continue
         if current_section and line.strip():
             sections[current_section] += line + "\n"
 
     if sections["diagnosis"]:
         st.markdown("**Diagnosis / Impression:**")
         st.info(sections["diagnosis"].strip())
-
     if sections["evidence"]:
         st.markdown("**Supporting Evidence:**")
-        evidence_lines = [l.strip() for l in sections["evidence"].split('\n') if l.strip()]
-        for evidence_line in evidence_lines:
-            st.markdown(evidence_line)
-
+        for l in sections["evidence"].split("\n"):
+            if l.strip(): st.markdown(l.strip())
     if sections["recommendations"]:
         st.markdown("**Next Steps / Recommendations:**")
-        rec_lines = [l.strip() for l in sections["recommendations"].split('\n') if l.strip()]
-        for rec_line in rec_lines:
-            st.markdown(rec_line)
-
+        for l in sections["recommendations"].split("\n"):
+            if l.strip(): st.markdown(l.strip())
     if not any(sections.values()):
         st.markdown(
-            f"""
-            <div style="background-color: #f0f2f6; padding: 1.5rem; border-radius: 0.5rem; border-left: 4px solid #1f77b4;">
-                {final_answer.replace(chr(10), '<br>')}
-            </div>
-            """,
-            unsafe_allow_html=True
+            f'<div style="background-color:#f0f2f6;padding:1.5rem;border-radius:.5rem;border-left:4px solid #1f77b4;">'
+            f'{final_answer.replace(chr(10), "<br>")}</div>',
+            unsafe_allow_html=True,
         )
-
-    refinement = final_state.get('refinement_result', {})
-    if refinement and refinement.get('refinements_applied'):
-        st.info(f"ℹ This response was refined through {refinement.get('iterations', 0)} stages: {', '.join(refinement.get('refinements_applied', []))}")
 
     # ============================================================
     # EVALUATION METRICS
     # ============================================================
 
     st.markdown("---")
-    st.header(" Evaluation Metrics")
+    st.header("Evaluation Metrics")
 
     metrics = final_state.get("metrics", {})
-    export_metrics = {
-        k: v for k, v in metrics.items() 
-        if k not in {"GroundednessSimple", "EvaluationNote", "GroundednessSource"}
-    }
-
-    # Show user-facing metrics only
-    preferred_order = [          # RAGAS faithfulness/groundedness (main)
-        "Precision@K",
-        "Recall@K",
-        "MRR",
-        "Groundedness",
-        "ClinicalCorrectness",
-        "Completeness"
-    ]
-
-    # Hide debug/internal metrics by default
-    hidden_keys = {"GroundednessSimple", "EvaluationNote"}
+    preferred_order = ["Precision@K", "Recall@K", "MRR", "Groundedness", "ClinicalCorrectness", "Completeness"]
+    hidden_keys     = {"GroundednessSimple", "EvaluationNote", "GroundednessSource"}
 
     visible_metrics = {
         k: metrics[k]
@@ -573,36 +492,24 @@ if run_button and query.strip():
         if k in metrics and k not in hidden_keys
     }
 
-    # if visible_metrics:
-    #     metric_cols = st.columns(len(visible_metrics))
-    #     for col, (k, v) in zip(metric_cols, visible_metrics.items()):
-    #         col.metric(label=k, value=f"{v:.3f}" if isinstance(v, (float, int)) else v)
     if visible_metrics:
         metric_cols = st.columns(len(visible_metrics))
         for col, (k, v) in zip(metric_cols, visible_metrics.items()):
-            val = visible_metrics[k]
-            if isinstance(val, (float, int)):
-                col.metric(label=k, value=f"{val:.3f}")
-            else:
-                col.metric(label=k, value="N/A")
+            col.metric(label=k, value=f"{float(v):.3f}" if isinstance(v, (float, int)) else "N/A")
     else:
         st.warning("No evaluation metrics available")
-
-    # Optional debug view
-    # with st.expander("Debug Metrics (optional)", expanded=False):
-    #     debug_metrics = {k: v for k, v in metrics.items() if k in hidden_keys}
-    #     if debug_metrics:
-    #         st.json(debug_metrics)
-    #     else:
-    #         st.write("No debug metrics.")
-
 
     # ============================================================
     # EXPORT
     # ============================================================
 
     st.markdown("---")
-    st.header(" Export Results")
+    st.header("Export Results")
+
+    export_metrics = {
+        k: v for k, v in metrics.items()
+        if k not in {"GroundednessSimple", "EvaluationNote", "GroundednessSource"}
+    }
 
     col1, col2 = st.columns(2)
 
@@ -616,15 +523,17 @@ Query: {query}
 
 PIPELINE SUMMARY
 {'-'*60}
-Total Iterations: {total_iterations}
+Total Iterations:   {total_iterations}
 Retrieval Attempts: {retrieval_attempts}
 Reasoning Attempts: {reasoning_attempts}
+Refinement Count:   {refinement_count}
+Force-Finalized:    {final_state.get('forced_complete', False)}
 
 QUALITY SCORES
 {'-'*60}
-Evidence Quality: {evidence_score:.2f}
-Response Quality: {response_score:.2f}
-Overall Quality: {avg_quality:.2f}
+Evidence Quality (threshold={evidence_threshold}): {evidence_score:.2f}
+Response Quality (threshold={response_threshold}): {response_score:.2f}
+Overall Quality:  {avg_quality:.2f}
 
 CLINICAL RESPONSE
 {'-'*60}
@@ -634,98 +543,77 @@ EVALUATION METRICS
 {'-'*60}
 {chr(10).join([f'{k}: {v}' for k, v in export_metrics.items()])}
 """
-
         st.download_button(
-            label=" Download as Text",
+            label="Download as Text",
             data=export_text,
             file_name=f"clinical_report_patient_{patient_id}.txt",
-            mime="text/plain"
+            mime="text/plain",
         )
 
     with col2:
-        def convert_to_serializable(obj):
-            if isinstance(obj, np.floating):
-                return float(obj)
-            elif isinstance(obj, np.integer):
-                return int(obj)
-            elif isinstance(obj, dict):
-                return {k: convert_to_serializable(v) for k, v in obj.items()}
-            elif isinstance(obj, list):
-                return [convert_to_serializable(item) for item in obj]
+        def _to_serializable(obj):
+            if isinstance(obj, np.floating):  return float(obj)
+            if isinstance(obj, np.integer):   return int(obj)
+            if isinstance(obj, dict):         return {k: _to_serializable(v) for k, v in obj.items()}
+            if isinstance(obj, list):         return [_to_serializable(i) for i in obj]
             return obj
 
-        
-        serializable_metrics = convert_to_serializable(export_metrics)
-        serializable_quality_scores = convert_to_serializable(quality_scores)
-
-        # 1. Create the base data dictionary
         export_json_data = {
             "patient_id": patient_id,
             "query": query,
             "pipeline_summary": {
-                "total_iterations": int(total_iterations),
+                "total_iterations":  int(total_iterations),
                 "retrieval_attempts": int(retrieval_attempts),
-                "reasoning_attempts": int(reasoning_attempts)
+                "reasoning_attempts": int(reasoning_attempts),
+                "refinement_count":   int(refinement_count),
+                "forced_complete":    bool(final_state.get("forced_complete", False)),
             },
-            "quality_scores": serializable_quality_scores,
-            "final_answer": final_answer,
-            "metrics": serializable_metrics,
-            "evidence_count": len(filtered_evidence)
+            "thresholds_used": {
+                "evidence_threshold":     float(evidence_threshold),
+                "response_threshold":     float(response_threshold),
+                "max_retrieval_retries":  int(max_retrieval_retries),
+                "max_refinement_retries": int(max_refinement_retries),
+            },
+            "quality_scores":  _to_serializable(quality_scores),
+            "final_answer":    final_answer,
+            "metrics":         _to_serializable(export_metrics),
+            "evidence_count":  len(filtered_evidence),
         }
 
-        # 2. Add pathology data if available (FIXED)
         if has_pathology_data:
-            pathology_export = {
+            export_json_data["pathology_detection"] = {
                 "detected_pathologies": max_scores,
                 "top_findings": [
-                    {"pathology": p[0], "confidence": f"{p[1]*100:.1f}%"}
-                    for p in sorted_pathologies[:5]
-                ]
+                    {"pathology": p, "confidence": f"{s*100:.1f}%"}
+                    for p, s in sorted_pathologies[:5]
+                ],
             }
-            export_json_data["pathology_detection"] = pathology_export
-
-        # 3. Convert to JSON string
-        export_json = json.dumps(export_json_data, indent=2)
 
         st.download_button(
-            label=" Download as JSON",
-            data=export_json,
+            label="Download as JSON",
+            data=json.dumps(export_json_data, indent=2),
             file_name=f"clinical_report_patient_{patient_id}.json",
-            mime="application/json"
+            mime="application/json",
         )
 
 else:
-    # ============================================================
-    # PLACEHOLDER
-    # ============================================================
-
-    st.info(" Enter **Patient ID** and **Clinical Query**, then click **Run Analysis** to start.")
-
+    st.info("Enter **Patient ID** and **Clinical Query**, then click **Run Analysis** to start.")
     st.markdown("---")
-    st.markdown("###  Example Queries")
-
-    examples = [
+    st.markdown("### Example Queries")
+    for example in [
         "Is there any pulmonary abnormality?",
         "Are there signs of pleural effusion?",
         "Is there evidence of cardiomegaly?",
         "What are the findings in the chest X-ray?",
-    ]
-
-    for example in examples:
-        if st.button(f" {example}", key=example):
-            st.session_state['example_query'] = example
+    ]:
+        if st.button(f"💬 {example}", key=example):
+            st.session_state["example_query"] = example
             st.rerun()
-
-# ============================================================
-# FOOTER
-# ============================================================
 
 st.markdown("---")
 st.markdown(
-    """
-    <div style="text-align: center; color: #666; font-size: 0.9rem;">
-         Built for Clinical AI Research | Powered by LangGraph & Ollama
-    </div>
-    """,
-    unsafe_allow_html=True
+    '<div style="text-align:center;color:#666;font-size:.9rem;">'
+    "Built for Clinical AI Research | Powered by LangGraph & Ollama"
+    "</div>",
+    unsafe_allow_html=True,
 )

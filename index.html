@@ -1,0 +1,2188 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>ClinicalMind — MM-RAG Decision Support</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Syne:wght@400;500;600;700;800&family=JetBrains+Mono:wght@300;400;500&family=Lora:ital,wght@0,400;0,500;1,400&display=swap" rel="stylesheet" />
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
+
+  <style>
+    /* ═══════════════════════════════════════════════════════
+       DESIGN TOKENS
+    ═══════════════════════════════════════════════════════ */
+    :root {
+      --bg:           #080c10;
+      --bg-1:         #0d1218;
+      --bg-2:         #121820;
+      --bg-3:         #182028;
+      --bg-4:         #1e2830;
+
+      --border:       rgba(255,255,255,0.07);
+      --border-light: rgba(255,255,255,0.04);
+
+      --cyan:         #00d4c8;
+      --cyan-dim:     rgba(0,212,200,0.12);
+      --cyan-glow:    rgba(0,212,200,0.25);
+      --blue:         #4a9eff;
+      --blue-dim:     rgba(74,158,255,0.12);
+      --green:        #2dca72;
+      --green-dim:    rgba(45,202,114,0.12);
+      --amber:        #f5a623;
+      --amber-dim:    rgba(245,166,35,0.12);
+      --red:          #ff4d6a;
+      --red-dim:      rgba(255,77,106,0.12);
+      --purple:       #a78bfa;
+
+      --text-1:       #f0f4f8;
+      --text-2:       #8fa0b4;
+      --text-3:       #4a5a6a;
+      --text-4:       #2a3a4a;
+
+      --font-display: 'Syne', sans-serif;
+      --font-body:    'Lora', serif;
+      --font-mono:    'JetBrains Mono', monospace;
+
+      --r-sm:  6px;
+      --r-md:  12px;
+      --r-lg:  18px;
+      --r-xl:  24px;
+
+      --sidebar-w: 280px;
+      --ease: cubic-bezier(0.16, 1, 0.3, 1);
+    }
+
+    /* ═══════════════════════════════════════════════════════
+       RESET & BASE
+    ═══════════════════════════════════════════════════════ */
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    html { scroll-behavior: smooth; }
+
+    body {
+      background: var(--bg);
+      color: var(--text-1);
+      font-family: var(--font-body);
+      font-size: 15px;
+      line-height: 1.65;
+      min-height: 100vh;
+      overflow-x: hidden;
+    }
+
+    ::selection { background: var(--cyan-dim); color: var(--cyan); }
+
+    ::-webkit-scrollbar { width: 5px; height: 5px; }
+    ::-webkit-scrollbar-track { background: var(--bg); }
+    ::-webkit-scrollbar-thumb { background: var(--bg-4); border-radius: 3px; }
+    ::-webkit-scrollbar-thumb:hover { background: var(--text-3); }
+
+    /* ═══════════════════════════════════════════════════════
+       LAYOUT
+    ═══════════════════════════════════════════════════════ */
+    .app {
+      display: flex;
+      min-height: 100vh;
+    }
+
+    /* ═══════════════════════════════════════════════════════
+       SIDEBAR
+    ═══════════════════════════════════════════════════════ */
+    .sidebar {
+      width: var(--sidebar-w);
+      flex-shrink: 0;
+      background: var(--bg-1);
+      border-right: 1px solid var(--border);
+      display: flex;
+      flex-direction: column;
+      position: sticky;
+      top: 0;
+      height: 100vh;
+      overflow-y: auto;
+      padding: 0 0 24px 0;
+    }
+
+    .sidebar-brand {
+      padding: 28px 24px 24px;
+      border-bottom: 1px solid var(--border);
+    }
+
+    .brand-mark {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      margin-bottom: 6px;
+    }
+
+    .brand-icon {
+      width: 38px;
+      height: 38px;
+      background: linear-gradient(135deg, var(--cyan), var(--blue));
+      border-radius: var(--r-md);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 18px;
+      flex-shrink: 0;
+      box-shadow: 0 0 20px var(--cyan-glow);
+    }
+
+    .brand-name {
+      font-family: var(--font-display);
+      font-size: 1.25rem;
+      font-weight: 700;
+      color: var(--text-1);
+      letter-spacing: -0.02em;
+    }
+
+    .brand-version {
+      font-family: var(--font-mono);
+      font-size: 0.62rem;
+      color: var(--cyan);
+      letter-spacing: 0.1em;
+      text-transform: uppercase;
+    }
+
+    .sidebar-section {
+      padding: 20px 24px 0;
+    }
+
+    .sidebar-label {
+      font-family: var(--font-mono);
+      font-size: 0.6rem;
+      font-weight: 500;
+      letter-spacing: 0.15em;
+      text-transform: uppercase;
+      color: var(--text-3);
+      margin-bottom: 12px;
+      padding-bottom: 8px;
+      border-bottom: 1px solid var(--border-light);
+    }
+
+    /* Slider */
+    .slider-group { margin-bottom: 18px; }
+
+    .slider-row {
+      display: flex;
+      justify-content: space-between;
+      align-items: baseline;
+      margin-bottom: 8px;
+    }
+
+    .slider-name {
+      font-family: var(--font-mono);
+      font-size: 0.72rem;
+      color: var(--text-2);
+    }
+
+    .slider-val {
+      font-family: var(--font-mono);
+      font-size: 0.8rem;
+      font-weight: 500;
+      color: var(--cyan);
+      background: var(--cyan-dim);
+      padding: 1px 7px;
+      border-radius: 4px;
+    }
+
+    input[type="range"] {
+      -webkit-appearance: none;
+      width: 100%;
+      height: 4px;
+      background: var(--bg-4);
+      border-radius: 2px;
+      outline: none;
+      cursor: pointer;
+    }
+
+    input[type="range"]::-webkit-slider-thumb {
+      -webkit-appearance: none;
+      width: 14px;
+      height: 14px;
+      border-radius: 50%;
+      background: var(--cyan);
+      box-shadow: 0 0 8px var(--cyan-glow);
+      transition: transform 0.15s var(--ease);
+    }
+
+    input[type="range"]::-webkit-slider-thumb:hover {
+      transform: scale(1.2);
+    }
+
+    /* Number inputs */
+    .number-group { margin-bottom: 18px; }
+
+    .number-label {
+      font-family: var(--font-mono);
+      font-size: 0.72rem;
+      color: var(--text-2);
+      margin-bottom: 7px;
+      display: block;
+    }
+
+    .number-input-wrap {
+      display: flex;
+      align-items: center;
+      gap: 0;
+      background: var(--bg-3);
+      border: 1px solid var(--border);
+      border-radius: var(--r-sm);
+      overflow: hidden;
+    }
+
+    .num-btn {
+      width: 32px;
+      height: 32px;
+      background: none;
+      border: none;
+      color: var(--text-2);
+      font-size: 1.1rem;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      transition: background 0.15s, color 0.15s;
+      flex-shrink: 0;
+    }
+
+    .num-btn:hover { background: var(--bg-4); color: var(--cyan); }
+
+    .num-display {
+      flex: 1;
+      text-align: center;
+      font-family: var(--font-mono);
+      font-size: 0.85rem;
+      font-weight: 500;
+      color: var(--text-1);
+      background: none;
+      border: none;
+      outline: none;
+      pointer-events: none;
+    }
+
+    /* Capabilities pills */
+    .caps-list {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 6px;
+    }
+
+    .cap-pill {
+      font-family: var(--font-mono);
+      font-size: 0.6rem;
+      color: var(--text-3);
+      background: var(--bg-3);
+      border: 1px solid var(--border);
+      border-radius: 20px;
+      padding: 3px 9px;
+      letter-spacing: 0.03em;
+    }
+
+    .sidebar-footer {
+      margin-top: auto;
+      padding: 20px 24px 0;
+      font-family: var(--font-mono);
+      font-size: 0.6rem;
+      color: var(--text-4);
+      letter-spacing: 0.06em;
+      line-height: 1.8;
+    }
+
+    /* ═══════════════════════════════════════════════════════
+       MAIN CONTENT
+    ═══════════════════════════════════════════════════════ */
+    .main {
+      flex: 1;
+      min-width: 0;
+      display: flex;
+      flex-direction: column;
+    }
+
+    /* ═══════════════════════════════════════════════════════
+       HEADER
+    ═══════════════════════════════════════════════════════ */
+    .header {
+      padding: 56px 48px 48px;
+      position: relative;
+      text-align: center;
+    }
+
+    .header::before {
+      content: '';
+      position: absolute;
+      top: 0; left: 50%;
+      transform: translateX(-50%);
+      width: 400px;
+      height: 1px;
+      background: linear-gradient(90deg, transparent, var(--cyan), var(--blue), transparent);
+    }
+
+    .header-eyebrow {
+      font-family: var(--font-mono);
+      font-size: 0.65rem;
+      letter-spacing: 0.22em;
+      text-transform: uppercase;
+      color: var(--cyan);
+      margin-bottom: 14px;
+    }
+
+    .header-title {
+      font-family: var(--font-display);
+      font-size: 3rem;
+      font-weight: 800;
+      color: var(--text-1);
+      letter-spacing: -0.04em;
+      line-height: 1;
+      margin-bottom: 16px;
+    }
+
+    .header-title .accent {
+      background: linear-gradient(135deg, var(--cyan) 0%, var(--blue) 100%);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      background-clip: text;
+    }
+
+    .header-sub {
+      font-size: 0.95rem;
+      color: var(--text-2);
+      max-width: 520px;
+      margin: 0 auto;
+      font-style: italic;
+    }
+
+    /* ═══════════════════════════════════════════════════════
+       CONTENT AREA
+    ═══════════════════════════════════════════════════════ */
+    .content {
+      padding: 0 48px 64px;
+      flex: 1;
+    }
+
+    /* ═══════════════════════════════════════════════════════
+       QUERY CARD
+    ═══════════════════════════════════════════════════════ */
+    .query-card {
+      background: var(--bg-1);
+      border: 1px solid var(--border);
+      border-radius: var(--r-lg);
+      padding: 28px 32px;
+      margin-bottom: 32px;
+      position: relative;
+      overflow: hidden;
+    }
+
+    .query-card::before {
+      content: '';
+      position: absolute;
+      top: 0; left: 0;
+      width: 3px;
+      height: 100%;
+      background: linear-gradient(180deg, var(--cyan), var(--blue));
+    }
+
+    .query-row {
+      display: grid;
+      grid-template-columns: 140px 1fr;
+      gap: 20px;
+      align-items: start;
+      margin-bottom: 20px;
+    }
+
+    .field-label {
+      font-family: var(--font-mono);
+      font-size: 0.65rem;
+      letter-spacing: 0.12em;
+      text-transform: uppercase;
+      color: var(--text-3);
+      margin-bottom: 7px;
+    }
+
+    input[type="number"], textarea {
+      width: 100%;
+      background: var(--bg-3);
+      border: 1px solid var(--border);
+      border-radius: var(--r-sm);
+      color: var(--text-1);
+      font-family: var(--font-body);
+      font-size: 0.9rem;
+      padding: 10px 14px;
+      outline: none;
+      transition: border-color 0.2s, box-shadow 0.2s;
+      resize: none;
+    }
+
+    input[type="number"]:focus,
+    textarea:focus {
+      border-color: var(--cyan);
+      box-shadow: 0 0 0 3px var(--cyan-dim);
+    }
+
+    textarea { height: 88px; line-height: 1.5; }
+
+    textarea::placeholder { color: var(--text-3); font-style: italic; }
+
+    .run-btn {
+      width: 100%;
+      padding: 14px 32px;
+      background: linear-gradient(135deg, var(--cyan) 0%, var(--blue) 100%);
+      border: none;
+      border-radius: var(--r-md);
+      color: #080c10;
+      font-family: var(--font-display);
+      font-size: 0.9rem;
+      font-weight: 700;
+      letter-spacing: 0.04em;
+      cursor: pointer;
+      transition: all 0.2s var(--ease);
+      position: relative;
+      overflow: hidden;
+    }
+
+    .run-btn::after {
+      content: '';
+      position: absolute;
+      inset: 0;
+      background: rgba(255,255,255,0);
+      transition: background 0.2s;
+    }
+
+    .run-btn:hover {
+      transform: translateY(-1px);
+      box-shadow: 0 6px 24px var(--cyan-glow);
+    }
+
+    .run-btn:active { transform: translateY(0); }
+
+    .run-btn:disabled {
+      opacity: 0.5;
+      cursor: not-allowed;
+      transform: none;
+      box-shadow: none;
+    }
+
+    /* ═══════════════════════════════════════════════════════
+       EXAMPLE QUERIES (landing)
+    ═══════════════════════════════════════════════════════ */
+    .landing-grid {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 14px;
+      margin-bottom: 32px;
+      animation: fadeUp 0.5s var(--ease) both;
+    }
+
+    .feature-card {
+      background: var(--bg-1);
+      border: 1px solid var(--border);
+      border-radius: var(--r-md);
+      padding: 22px;
+      transition: border-color 0.2s, transform 0.2s;
+    }
+
+    .feature-card:hover {
+      border-color: rgba(0,212,200,0.3);
+      transform: translateY(-2px);
+    }
+
+    .feature-icon { font-size: 1.5rem; margin-bottom: 10px; }
+
+    .feature-title {
+      font-family: var(--font-display);
+      font-size: 0.85rem;
+      font-weight: 600;
+      color: var(--text-1);
+      margin-bottom: 5px;
+    }
+
+    .feature-desc {
+      font-size: 0.78rem;
+      color: var(--text-3);
+      line-height: 1.55;
+    }
+
+    .examples-label {
+      font-family: var(--font-mono);
+      font-size: 0.62rem;
+      letter-spacing: 0.12em;
+      text-transform: uppercase;
+      color: var(--text-3);
+      margin-bottom: 10px;
+    }
+
+    .example-btn {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      width: 100%;
+      padding: 11px 16px;
+      background: var(--bg-1);
+      border: 1px solid var(--border);
+      border-radius: var(--r-sm);
+      color: var(--text-2);
+      font-family: var(--font-body);
+      font-size: 0.84rem;
+      cursor: pointer;
+      text-align: left;
+      margin-bottom: 6px;
+      transition: all 0.15s var(--ease);
+    }
+
+    .example-btn:hover {
+      border-color: rgba(0,212,200,0.4);
+      color: var(--text-1);
+      background: var(--bg-2);
+    }
+
+    .example-btn .ex-icon { font-size: 1rem; flex-shrink: 0; }
+
+    /* ═══════════════════════════════════════════════════════
+       RESULTS
+    ═══════════════════════════════════════════════════════ */
+    #results { display: none; }
+    #results.visible { display: block; }
+
+    /* Section heading */
+    .sec-heading {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      margin: 36px 0 18px;
+    }
+
+    .sec-icon {
+      width: 34px;
+      height: 34px;
+      border-radius: var(--r-sm);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 1rem;
+      flex-shrink: 0;
+    }
+
+    .sec-icon.cyan   { background: var(--cyan-dim);  }
+    .sec-icon.blue   { background: var(--blue-dim);  }
+    .sec-icon.green  { background: var(--green-dim); }
+    .sec-icon.amber  { background: var(--amber-dim); }
+    .sec-icon.purple { background: rgba(167,139,250,0.12); }
+
+    .sec-title {
+      font-family: var(--font-display);
+      font-size: 1.05rem;
+      font-weight: 700;
+      color: var(--text-1);
+      letter-spacing: -0.01em;
+    }
+
+    .sec-divider {
+      height: 1px;
+      background: linear-gradient(90deg, var(--border), transparent);
+      margin-bottom: 20px;
+    }
+
+    /* Alert banners */
+    .alert {
+      display: flex;
+      align-items: flex-start;
+      gap: 12px;
+      padding: 13px 16px;
+      border-radius: var(--r-md);
+      font-size: 0.85rem;
+      line-height: 1.55;
+      margin-bottom: 16px;
+    }
+
+    .alert.success { background: var(--green-dim);  border: 1px solid rgba(45,202,114,0.25); color: var(--green); }
+    .alert.warn    { background: var(--amber-dim);  border: 1px solid rgba(245,166,35,0.25);  color: var(--amber); }
+    .alert.info    { background: var(--blue-dim);   border: 1px solid rgba(74,158,255,0.25);  color: var(--blue);  }
+    .alert.error   { background: var(--red-dim);    border: 1px solid rgba(255,77,106,0.25);  color: var(--red);   }
+    .alert-icon    { flex-shrink: 0; }
+
+    /* ═══════════════════════════════════════════════════════
+       STAT ROW
+    ═══════════════════════════════════════════════════════ */
+    .stat-row {
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 12px;
+      margin-bottom: 24px;
+    }
+
+    .stat-card {
+      background: var(--bg-1);
+      border: 1px solid var(--border);
+      border-radius: var(--r-md);
+      padding: 18px 20px;
+      position: relative;
+      overflow: hidden;
+    }
+
+    .stat-card::before {
+      content: '';
+      position: absolute;
+      top: 0; left: 0; right: 0;
+      height: 2px;
+    }
+
+    .stat-card.c-cyan::before   { background: var(--cyan);  }
+    .stat-card.c-blue::before   { background: var(--blue);  }
+    .stat-card.c-green::before  { background: var(--green); }
+    .stat-card.c-amber::before  { background: var(--amber); }
+
+    .stat-val {
+      font-family: var(--font-mono);
+      font-size: 2rem;
+      font-weight: 500;
+      color: var(--text-1);
+      line-height: 1;
+      margin-bottom: 5px;
+    }
+
+    .stat-label {
+      font-family: var(--font-mono);
+      font-size: 0.65rem;
+      color: var(--text-3);
+      letter-spacing: 0.05em;
+    }
+
+    /* ═══════════════════════════════════════════════════════
+       QUALITY GATES
+    ═══════════════════════════════════════════════════════ */
+    .gate-row {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 14px;
+      margin-bottom: 24px;
+    }
+
+    .gate-card {
+      background: var(--bg-1);
+      border: 1px solid var(--border);
+      border-radius: var(--r-md);
+      padding: 20px 22px;
+      position: relative;
+      overflow: hidden;
+    }
+
+    .gate-card::before {
+      content: '';
+      position: absolute;
+      top: 0; left: 0; right: 0;
+      height: 3px;
+    }
+
+    .gate-card.pass::before  { background: var(--green); }
+    .gate-card.fail::before  { background: var(--red);   }
+    .gate-card.warn::before  { background: var(--amber); }
+
+    .gate-lbl {
+      font-family: var(--font-mono);
+      font-size: 0.62rem;
+      letter-spacing: 0.12em;
+      text-transform: uppercase;
+      color: var(--text-3);
+      margin-bottom: 10px;
+    }
+
+    .gate-score {
+      font-family: var(--font-mono);
+      font-size: 2.4rem;
+      font-weight: 500;
+      line-height: 1;
+      margin-bottom: 10px;
+    }
+
+    .gate-score.pass  { color: var(--green); }
+    .gate-score.fail  { color: var(--red);   }
+    .gate-score.warn  { color: var(--amber); }
+
+    .gate-badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 5px;
+      padding: 3px 10px;
+      border-radius: 20px;
+      font-family: var(--font-mono);
+      font-size: 0.65rem;
+      font-weight: 500;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+    }
+
+    .gate-badge.pass { background: var(--green-dim); color: var(--green); border: 1px solid rgba(45,202,114,0.3); }
+    .gate-badge.fail { background: var(--red-dim);   color: var(--red);   border: 1px solid rgba(255,77,106,0.3); }
+    .gate-badge.warn { background: var(--amber-dim); color: var(--amber); border: 1px solid rgba(245,166,35,0.3); }
+
+    .gate-delta {
+      font-family: var(--font-mono);
+      font-size: 0.7rem;
+      color: var(--text-3);
+      margin-top: 8px;
+    }
+
+    /* ═══════════════════════════════════════════════════════
+       EXPANDER / ACCORDION
+    ═══════════════════════════════════════════════════════ */
+    .expander {
+      background: var(--bg-1);
+      border: 1px solid var(--border);
+      border-radius: var(--r-md);
+      margin-bottom: 8px;
+      overflow: hidden;
+    }
+
+    .expander-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 14px 18px;
+      cursor: pointer;
+      user-select: none;
+      transition: background 0.15s;
+    }
+
+    .expander-header:hover { background: var(--bg-2); }
+
+    .expander-title {
+      font-family: var(--font-display);
+      font-size: 0.88rem;
+      font-weight: 600;
+      color: var(--text-2);
+    }
+
+    .expander-chevron {
+      color: var(--text-3);
+      font-size: 0.75rem;
+      transition: transform 0.25s var(--ease);
+    }
+
+    .expander.open .expander-chevron { transform: rotate(180deg); }
+
+    .expander-body {
+      max-height: 0;
+      overflow: hidden;
+      transition: max-height 0.35s var(--ease);
+    }
+
+    .expander.open .expander-body { max-height: 2000px; }
+
+    .expander-content { padding: 16px 18px 20px; border-top: 1px solid var(--border-light); }
+
+    /* ═══════════════════════════════════════════════════════
+       EVIDENCE CARDS
+    ═══════════════════════════════════════════════════════ */
+    .evidence-inner {
+      display: grid;
+      grid-template-columns: 3fr 1fr;
+      gap: 20px;
+    }
+
+    .ev-report {
+      font-size: 0.84rem;
+      color: var(--text-2);
+      line-height: 1.7;
+      border-left: 2px solid var(--border);
+      padding-left: 14px;
+      margin: 10px 0;
+    }
+
+    .ev-meta {
+      display: flex;
+      gap: 16px;
+      margin-top: 10px;
+    }
+
+    .ev-meta-item {
+      font-family: var(--font-mono);
+      font-size: 0.7rem;
+    }
+
+    .ev-meta-key { color: var(--text-3); }
+    .ev-meta-val { color: var(--text-2); }
+
+    .ev-relevance {
+      font-family: var(--font-mono);
+      font-size: 0.7rem;
+      font-weight: 500;
+    }
+
+    .ev-img-wrap {
+      border-radius: var(--r-md);
+      overflow: hidden;
+      border: 1px solid var(--border);
+      background: var(--bg-3);
+    }
+
+    .ev-img-wrap img {
+      width: 100%;
+      height: auto;
+      display: block;
+    }
+
+    .ev-img-placeholder {
+      width: 100%;
+      aspect-ratio: 1;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      background: var(--bg-3);
+      color: var(--text-4);
+      font-family: var(--font-mono);
+      font-size: 0.7rem;
+      flex-direction: column;
+      gap: 8px;
+    }
+
+    /* ═══════════════════════════════════════════════════════
+       PATHOLOGY CHART
+    ═══════════════════════════════════════════════════════ */
+    .chart-wrap {
+      background: var(--bg-1);
+      border: 1px solid var(--border);
+      border-radius: var(--r-md);
+      padding: 20px;
+      margin-bottom: 16px;
+    }
+
+    .confidence-legend {
+      display: flex;
+      gap: 20px;
+      margin-top: 12px;
+      flex-wrap: wrap;
+    }
+
+    .legend-item {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      font-family: var(--font-mono);
+      font-size: 0.68rem;
+      color: var(--text-2);
+    }
+
+    .legend-dot {
+      width: 8px; height: 8px;
+      border-radius: 50%;
+      flex-shrink: 0;
+    }
+
+    /* ═══════════════════════════════════════════════════════
+       CLINICAL RESPONSE
+    ═══════════════════════════════════════════════════════ */
+    .response-card {
+      background: var(--bg-1);
+      border: 1px solid var(--border);
+      border-radius: var(--r-lg);
+      overflow: hidden;
+    }
+
+    .response-section {
+      padding: 22px 28px;
+      border-bottom: 1px solid var(--border-light);
+    }
+
+    .response-section:last-child { border-bottom: none; }
+
+    .response-sec-label {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      font-family: var(--font-mono);
+      font-size: 0.62rem;
+      font-weight: 500;
+      letter-spacing: 0.15em;
+      text-transform: uppercase;
+      margin-bottom: 12px;
+    }
+
+    .response-sec-label.diagnosis      { color: var(--blue);   }
+    .response-sec-label.evidence-sec   { color: var(--cyan);   }
+    .response-sec-label.recommendations{ color: var(--green);  }
+
+    .response-dot {
+      width: 6px; height: 6px;
+      border-radius: 50%;
+      flex-shrink: 0;
+    }
+
+    .response-dot.diagnosis       { background: var(--blue);  }
+    .response-dot.evidence-sec    { background: var(--cyan);  }
+    .response-dot.recommendations { background: var(--green); }
+
+    .response-text {
+      font-size: 0.9rem;
+      color: var(--text-1);
+      line-height: 1.75;
+    }
+
+    .response-text .citation {
+      font-family: var(--font-mono);
+      font-size: 0.72rem;
+      color: var(--amber);
+      background: var(--amber-dim);
+      border: 1px solid rgba(245,166,35,0.2);
+      border-radius: 3px;
+      padding: 0 4px;
+    }
+
+    /* ═══════════════════════════════════════════════════════
+       METRICS GRID
+    ═══════════════════════════════════════════════════════ */
+    .metrics-grid {
+      display: grid;
+      grid-template-columns: repeat(6, 1fr);
+      gap: 10px;
+      margin-bottom: 12px;
+    }
+
+    .metric-card {
+      background: var(--bg-1);
+      border: 1px solid var(--border);
+      border-radius: var(--r-md);
+      padding: 16px 14px;
+      text-align: center;
+    }
+
+    .metric-val {
+      font-family: var(--font-mono);
+      font-size: 1.55rem;
+      font-weight: 500;
+      line-height: 1;
+      margin-bottom: 6px;
+    }
+
+    .metric-key {
+      font-family: var(--font-mono);
+      font-size: 0.6rem;
+      color: var(--text-3);
+      letter-spacing: 0.04em;
+    }
+
+    .metric-desc {
+      font-family: var(--font-mono);
+      font-size: 0.55rem;
+      color: var(--text-4);
+      margin-top: 4px;
+    }
+
+    /* ═══════════════════════════════════════════════════════
+       EXPORT
+    ═══════════════════════════════════════════════════════ */
+    .export-row {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 14px;
+    }
+
+    .export-btn {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 9px;
+      padding: 13px 20px;
+      background: var(--bg-1);
+      border: 1px solid var(--border);
+      border-radius: var(--r-md);
+      color: var(--text-2);
+      font-family: var(--font-mono);
+      font-size: 0.75rem;
+      cursor: pointer;
+      transition: all 0.15s var(--ease);
+      text-decoration: none;
+    }
+
+    .export-btn:hover {
+      border-color: var(--cyan);
+      color: var(--text-1);
+      background: var(--cyan-dim);
+    }
+
+    /* ═══════════════════════════════════════════════════════
+       LOADING SPINNER
+    ═══════════════════════════════════════════════════════ */
+    #loading {
+      display: none;
+      text-align: center;
+      padding: 48px 0;
+    }
+
+    #loading.visible { display: block; }
+
+    .spinner {
+      width: 48px;
+      height: 48px;
+      border: 2px solid var(--bg-4);
+      border-top-color: var(--cyan);
+      border-radius: 50%;
+      margin: 0 auto 16px;
+      animation: spin 0.8s linear infinite;
+    }
+
+    .loading-text {
+      font-family: var(--font-mono);
+      font-size: 0.75rem;
+      color: var(--text-3);
+      letter-spacing: 0.08em;
+    }
+
+    .loading-steps {
+      margin-top: 12px;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 5px;
+    }
+
+    .loading-step {
+      font-family: var(--font-mono);
+      font-size: 0.65rem;
+      color: var(--text-4);
+      opacity: 0;
+      animation: stepReveal 0.4s var(--ease) forwards;
+    }
+
+    .loading-step.active { color: var(--cyan); opacity: 1; }
+
+    /* ═══════════════════════════════════════════════════════
+       DATA TABLE
+    ═══════════════════════════════════════════════════════ */
+    .data-table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 0.8rem;
+    }
+
+    .data-table th {
+      font-family: var(--font-mono);
+      font-size: 0.6rem;
+      letter-spacing: 0.1em;
+      text-transform: uppercase;
+      color: var(--text-3);
+      padding: 8px 12px;
+      border-bottom: 1px solid var(--border);
+      text-align: left;
+    }
+
+    .data-table td {
+      padding: 8px 12px;
+      border-bottom: 1px solid var(--border-light);
+      color: var(--text-2);
+    }
+
+    .data-table tr:last-child td { border-bottom: none; }
+    .data-table tr:hover td { background: var(--bg-2); }
+
+    /* ═══════════════════════════════════════════════════════
+       MINI METRICS (stage expander)
+    ═══════════════════════════════════════════════════════ */
+    .mini-metrics {
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 10px;
+      margin-bottom: 16px;
+    }
+
+    .mini-metric {
+      background: var(--bg-2);
+      border: 1px solid var(--border-light);
+      border-radius: var(--r-sm);
+      padding: 12px 14px;
+      text-align: center;
+    }
+
+    .mini-metric-val {
+      font-family: var(--font-mono);
+      font-size: 1.3rem;
+      font-weight: 500;
+      color: var(--text-1);
+      line-height: 1;
+      margin-bottom: 4px;
+    }
+
+    .mini-metric-key {
+      font-family: var(--font-mono);
+      font-size: 0.6rem;
+      color: var(--text-3);
+    }
+
+    /* ═══════════════════════════════════════════════════════
+       FOOTER
+    ═══════════════════════════════════════════════════════ */
+    .footer {
+      text-align: center;
+      padding: 24px 48px;
+      border-top: 1px solid var(--border);
+      font-family: var(--font-mono);
+      font-size: 0.62rem;
+      color: var(--text-4);
+      letter-spacing: 0.06em;
+    }
+
+    /* ═══════════════════════════════════════════════════════
+       ANIMATIONS
+    ═══════════════════════════════════════════════════════ */
+    @keyframes spin {
+      to { transform: rotate(360deg); }
+    }
+
+    @keyframes fadeUp {
+      from { opacity: 0; transform: translateY(12px); }
+      to   { opacity: 1; transform: translateY(0); }
+    }
+
+    @keyframes stepReveal {
+      to { opacity: 0.6; }
+    }
+
+    .fade-in {
+      animation: fadeUp 0.45s var(--ease) both;
+    }
+
+    /* staggered children */
+    .stagger > * { animation: fadeUp 0.4s var(--ease) both; }
+    .stagger > *:nth-child(1) { animation-delay: 0.05s; }
+    .stagger > *:nth-child(2) { animation-delay: 0.1s;  }
+    .stagger > *:nth-child(3) { animation-delay: 0.15s; }
+    .stagger > *:nth-child(4) { animation-delay: 0.2s;  }
+    .stagger > *:nth-child(5) { animation-delay: 0.25s; }
+    .stagger > *:nth-child(6) { animation-delay: 0.3s;  }
+
+    /* ═══════════════════════════════════════════════════════
+       RESPONSIVE
+    ═══════════════════════════════════════════════════════ */
+    @media (max-width: 1100px) {
+      .metrics-grid { grid-template-columns: repeat(3, 1fr); }
+      .stat-row     { grid-template-columns: repeat(2, 1fr); }
+    }
+
+    @media (max-width: 860px) {
+      :root { --sidebar-w: 0px; }
+      .sidebar { display: none; }
+      .content { padding: 0 20px 48px; }
+      .header  { padding: 36px 20px 32px; }
+      .header-title { font-size: 2.2rem; }
+      .landing-grid { grid-template-columns: 1fr 1fr; }
+      .gate-row { grid-template-columns: 1fr; }
+      .evidence-inner { grid-template-columns: 1fr; }
+      .metrics-grid { grid-template-columns: repeat(2, 1fr); }
+      .export-row { grid-template-columns: 1fr; }
+      .mini-metrics { grid-template-columns: repeat(2, 1fr); }
+    }
+  </style>
+</head>
+
+<body>
+<div class="app">
+
+  <!-- ═══════════ SIDEBAR ═══════════ -->
+  <aside class="sidebar">
+    <div class="sidebar-brand">
+      <div class="brand-mark">
+        <div class="brand-icon">🩺</div>
+        <div>
+          <div class="brand-name">ClinicalMind</div>
+          <div class="brand-version">MM-RAG v2.0</div>
+        </div>
+      </div>
+    </div>
+
+    <div class="sidebar-section">
+      <div class="sidebar-label">Quality Thresholds</div>
+
+      <div class="slider-group">
+        <div class="slider-row">
+          <span class="slider-name">Evidence Gate</span>
+          <span class="slider-val" id="ev-val">0.40</span>
+        </div>
+        <input type="range" id="evidence-threshold" min="0" max="1" step="0.05" value="0.4"
+               oninput="document.getElementById('ev-val').textContent = parseFloat(this.value).toFixed(2)" />
+      </div>
+
+      <div class="slider-group">
+        <div class="slider-row">
+          <span class="slider-name">Response Gate</span>
+          <span class="slider-val" id="resp-val">0.70</span>
+        </div>
+        <input type="range" id="response-threshold" min="0" max="1" step="0.05" value="0.7"
+               oninput="document.getElementById('resp-val').textContent = parseFloat(this.value).toFixed(2)" />
+      </div>
+    </div>
+
+    <div class="sidebar-section">
+      <div class="sidebar-label">Retry Limits</div>
+
+      <div class="number-group">
+        <label class="number-label">Max Retrieval Retries</label>
+        <div class="number-input-wrap">
+          <button class="num-btn" onclick="adjustNum('max-retrieval', -1)">−</button>
+          <span class="num-display" id="max-retrieval">2</span>
+          <button class="num-btn" onclick="adjustNum('max-retrieval', 1)">+</button>
+        </div>
+      </div>
+
+      <div class="number-group">
+        <label class="number-label">Max Refinement Retries</label>
+        <div class="number-input-wrap">
+          <button class="num-btn" onclick="adjustNum('max-refinement', -1)">−</button>
+          <span class="num-display" id="max-refinement">2</span>
+          <button class="num-btn" onclick="adjustNum('max-refinement', 1)">+</button>
+        </div>
+      </div>
+    </div>
+
+    <div class="sidebar-section">
+      <div class="sidebar-label">Capabilities</div>
+      <div class="caps-list">
+        <span class="cap-pill">LangGraph</span>
+        <span class="cap-pill">Qdrant</span>
+        <span class="cap-pill">Groq / Llama 3.1</span>
+        <span class="cap-pill">CLIP Embeddings</span>
+        <span class="cap-pill">DenseNet-121</span>
+        <span class="cap-pill">LLaVA-Med</span>
+        <span class="cap-pill">RAGAS</span>
+        <span class="cap-pill">Multi-agent</span>
+        <span class="cap-pill">Quality Gates</span>
+      </div>
+    </div>
+
+    <div class="sidebar-footer">
+      Groq · Qdrant · Ollama · LangGraph<br>
+      Clinical AI Research Platform
+    </div>
+  </aside>
+
+  <!-- ═══════════ MAIN ═══════════ -->
+  <main class="main">
+
+    <!-- Header -->
+    <header class="header">
+      <div class="header-eyebrow">Multimodal Retrieval-Augmented Generation</div>
+      <h1 class="header-title">Clinical<span class="accent">Mind</span></h1>
+      <p class="header-sub">AI-powered clinical reasoning with multi-agent quality gates, multimodal evidence retrieval, and pathology detection.</p>
+    </header>
+
+    <!-- Content -->
+    <div class="content">
+
+      <!-- Query Card -->
+      <div class="query-card fade-in">
+        <div class="query-row">
+          <div>
+            <div class="field-label">Patient ID</div>
+            <input type="number" id="patient-id" min="1" step="1" value="1" />
+          </div>
+          <div>
+            <div class="field-label">Clinical Query</div>
+            <textarea id="query-input" placeholder="e.g., Are there signs of pleural effusion in the chest X-ray?"></textarea>
+          </div>
+        </div>
+        <button class="run-btn" id="run-btn" onclick="runAnalysis()">
+          ⚡&nbsp;&nbsp;Run Clinical Analysis
+        </button>
+      </div>
+
+      <!-- Loading -->
+      <div id="loading">
+        <div class="spinner"></div>
+        <div class="loading-text">Running multi-agent pipeline…</div>
+        <div class="loading-steps" id="loading-steps"></div>
+      </div>
+
+      <!-- Landing (shown before first run) -->
+      <div id="landing">
+        <div class="landing-grid">
+          <div class="feature-card">
+            <div class="feature-icon">🔍</div>
+            <div class="feature-title">Multimodal Retrieval</div>
+            <div class="feature-desc">CLIP-based semantic search across X-ray images and clinical reports via Qdrant vector store.</div>
+          </div>
+          <div class="feature-card">
+            <div class="feature-icon">🧠</div>
+            <div class="feature-title">LLM Reasoning</div>
+            <div class="feature-desc">Groq-hosted Llama 3.1 generates evidence-grounded clinical impressions with mandatory citations.</div>
+          </div>
+          <div class="feature-card">
+            <div class="feature-icon">✅</div>
+            <div class="feature-title">Quality Gates</div>
+            <div class="feature-desc">LangGraph flow with evidence and response quality gates. Auto-retry and progressive refinement loops.</div>
+          </div>
+          <div class="feature-card">
+            <div class="feature-icon">🫁</div>
+            <div class="feature-title">Pathology Detection</div>
+            <div class="feature-desc">DenseNet-121 trained on NIH ChestX-ray14 — real-time multi-label pathology probability scores.</div>
+          </div>
+          <div class="feature-card">
+            <div class="feature-icon">🩻</div>
+            <div class="feature-title">LLaVA-Med Vision</div>
+            <div class="feature-desc">Local Ollama-hosted LLaVA-Med generates observation-only anatomical insights from X-ray images.</div>
+          </div>
+          <div class="feature-card">
+            <div class="feature-icon">📊</div>
+            <div class="feature-title">RAGAS Evaluation</div>
+            <div class="feature-desc">Automated metrics: Faithfulness, Precision@K, Recall@K, MRR, Clinical Correctness, Completeness.</div>
+          </div>
+        </div>
+
+        <div class="examples-label">↓ Try an example query</div>
+        <button class="example-btn" onclick="setExample('Is there any pulmonary abnormality?')">
+          <span class="ex-icon">🫁</span> Is there any pulmonary abnormality?
+        </button>
+        <button class="example-btn" onclick="setExample('Are there signs of pleural effusion?')">
+          <span class="ex-icon">💧</span> Are there signs of pleural effusion?
+        </button>
+        <button class="example-btn" onclick="setExample('Is there evidence of cardiomegaly?')">
+          <span class="ex-icon">❤️</span> Is there evidence of cardiomegaly?
+        </button>
+        <button class="example-btn" onclick="setExample('What are the findings in the chest X-ray?')">
+          <span class="ex-icon">📋</span> What are the findings in the chest X-ray?
+        </button>
+      </div>
+
+      <!-- Results -->
+      <div id="results">
+
+        <!-- Pipeline Summary -->
+        <div class="sec-heading">
+          <div class="sec-icon cyan">🔄</div>
+          <div class="sec-title">Pipeline Execution</div>
+        </div>
+        <div class="sec-divider"></div>
+
+        <div class="stat-row stagger" id="stat-row">
+          <div class="stat-card c-cyan">
+            <div class="stat-val" id="s-total">0</div>
+            <div class="stat-label">Total Iterations</div>
+          </div>
+          <div class="stat-card c-blue">
+            <div class="stat-val" id="s-retrieval">0</div>
+            <div class="stat-label">Retrieval Cycles</div>
+          </div>
+          <div class="stat-card c-green">
+            <div class="stat-val" id="s-reasoning">0</div>
+            <div class="stat-label">Reasoning Cycles</div>
+          </div>
+          <div class="stat-card c-amber">
+            <div class="stat-val" id="s-refinement">0</div>
+            <div class="stat-label">Refinement Cycles</div>
+          </div>
+        </div>
+
+        <!-- Quality Gates -->
+        <div class="sec-heading">
+          <div class="sec-icon green">✅</div>
+          <div class="sec-title">Quality Gate Results</div>
+        </div>
+        <div class="sec-divider"></div>
+        <div class="gate-row stagger" id="gate-row"></div>
+
+        <!-- Stage Details -->
+        <div class="sec-heading">
+          <div class="sec-icon blue">📊</div>
+          <div class="sec-title">Stage Details</div>
+        </div>
+        <div class="sec-divider"></div>
+        <div id="stage-details"></div>
+
+        <!-- Retrieved Evidence -->
+        <div class="sec-heading">
+          <div class="sec-icon cyan">📁</div>
+          <div class="sec-title">Retrieved Evidence</div>
+        </div>
+        <div class="sec-divider"></div>
+        <div id="evidence-section"></div>
+
+        <!-- Pathology Detection -->
+        <div class="sec-heading">
+          <div class="sec-icon amber">🫁</div>
+          <div class="sec-title">Pathology Detection</div>
+        </div>
+        <div class="sec-divider"></div>
+        <div id="pathology-section"></div>
+
+        <!-- Clinical Response -->
+        <div class="sec-heading">
+          <div class="sec-icon purple">📋</div>
+          <div class="sec-title">Clinical Response</div>
+        </div>
+        <div class="sec-divider"></div>
+        <div id="response-section"></div>
+
+        <!-- Evaluation Metrics -->
+        <div class="sec-heading">
+          <div class="sec-icon blue">📈</div>
+          <div class="sec-title">Evaluation Metrics</div>
+        </div>
+        <div class="sec-divider"></div>
+        <div id="metrics-section"></div>
+
+        <!-- Export -->
+        <div class="sec-heading">
+          <div class="sec-icon green">💾</div>
+          <div class="sec-title">Export Report</div>
+        </div>
+        <div class="sec-divider"></div>
+        <div class="export-row">
+          <button class="export-btn" onclick="exportTxt()">⬇&nbsp;&nbsp;Download .txt Report</button>
+          <button class="export-btn" onclick="exportJson()">⬇&nbsp;&nbsp;Download .json Report</button>
+        </div>
+
+      </div><!-- /results -->
+
+    </div><!-- /content -->
+
+    <footer class="footer">
+      ClinicalMind MM-RAG &nbsp;·&nbsp; Built for Clinical AI Research &nbsp;·&nbsp;
+      LangGraph · Groq · Qdrant · Ollama
+    </footer>
+
+  </main>
+</div>
+
+<!-- ═══════════════════════════════════════════════════════
+     JAVASCRIPT
+═══════════════════════════════════════════════════════ -->
+<script>
+/* ── Utilities ─────────────────────────────────────────── */
+
+// State stores for export
+let _lastState = null;
+let _patientId = 1;
+let _query = '';
+
+function adjustNum(id, delta) {
+  const el = document.getElementById(id);
+  const v  = Math.min(5, Math.max(1, parseInt(el.textContent) + delta));
+  el.textContent = v;
+}
+
+function setExample(text) {
+  document.getElementById('query-input').value = text;
+  document.getElementById('query-input').focus();
+}
+
+function getConfig() {
+  return {
+    evidenceThreshold:   parseFloat(document.getElementById('evidence-threshold').value),
+    responseThreshold:   parseFloat(document.getElementById('response-threshold').value),
+    maxRetrievalRetries: parseInt(document.getElementById('max-retrieval').textContent),
+    maxRefinementRetries:parseInt(document.getElementById('max-refinement').textContent),
+  };
+}
+
+/* ── Color helpers ─────────────────────────────────────── */
+
+function scoreColor(v) {
+  if (v >= 0.7)  return 'var(--green)';
+  if (v >= 0.4)  return 'var(--amber)';
+  return 'var(--red)';
+}
+
+function gateClass(score, threshold) {
+  if (score >= threshold) return 'pass';
+  if (score >= threshold * 0.8) return 'warn';
+  return 'fail';
+}
+
+function confidenceLabel(s) {
+  if (s >= 70) return { cls: 'var(--red)',   label: '🔴 High'     };
+  if (s >= 50) return { cls: 'var(--amber)', label: '🟡 Moderate' };
+  return              { cls: 'var(--green)', label: '🟢 Low'      };
+}
+
+/* ── Alert helper ──────────────────────────────────────── */
+
+function alertHTML(msg, type = 'info') {
+  const icons = { success: '✅', warn: '⚠️', error: '🚨', info: 'ℹ️' };
+  return `<div class="alert ${type}">
+    <span class="alert-icon">${icons[type] || 'ℹ️'}</span>
+    <span>${msg}</span>
+  </div>`;
+}
+
+/* ── Expander component ────────────────────────────────── */
+
+function makeExpander(title, contentHTML, open = false) {
+  const id = 'exp-' + Math.random().toString(36).slice(2);
+  return `
+  <div class="expander ${open ? 'open' : ''}" id="${id}">
+    <div class="expander-header" onclick="toggleExpander('${id}')">
+      <span class="expander-title">${title}</span>
+      <span class="expander-chevron">▼</span>
+    </div>
+    <div class="expander-body">
+      <div class="expander-content">${contentHTML}</div>
+    </div>
+  </div>`;
+}
+
+function toggleExpander(id) {
+  document.getElementById(id).classList.toggle('open');
+}
+
+/* ── Gate cards ────────────────────────────────────────── */
+
+function renderGateCard(label, score, threshold) {
+  const cls = gateClass(score, threshold);
+  const badgeText = cls === 'pass' ? '✓ PASS' : cls === 'warn' ? '~ MARGINAL' : '✗ FAIL';
+  const delta = score - threshold;
+  const arrow = delta >= 0 ? '↑' : '↓';
+  return `
+  <div class="gate-card ${cls}">
+    <div class="gate-lbl">${label}</div>
+    <div class="gate-score ${cls}">${score.toFixed(2)}</div>
+    <div class="gate-badge ${cls}">${badgeText}</div>
+    <div class="gate-delta">${arrow} ${Math.abs(delta).toFixed(2)} vs threshold ${threshold.toFixed(2)}</div>
+  </div>`;
+}
+
+/* ── Response section parser ────────────────────────────── */
+
+function parseResponseSections(text) {
+  const sections = { diagnosis: '', evidence: '', recommendations: '' };
+  let cur = null;
+
+  for (const line of text.split('\n')) {
+    const ll = line.toLowerCase().trim();
+    if (ll.includes('diagnosis') || ll.includes('impression')) { cur = 'diagnosis'; continue; }
+    if (ll.includes('supporting evidence') || ll === 'evidence:') { cur = 'evidence'; continue; }
+    if (ll.includes('next steps') || ll.includes('recommendation')) { cur = 'recommendations'; continue; }
+    if (cur && line.trim()) sections[cur] += line + '\n';
+  }
+  return sections;
+}
+
+function formatResponseText(text) {
+  // highlight citations like [R1], [Rx], [R2-IMAGE]
+  return text.trim()
+    .replace(/\n/g, '<br>')
+    .replace(/\[(R\d+|Rx)(-IMAGE)?\]/g, '<span class="citation">[$1$2]</span>');
+}
+
+/* ── Pathology bar chart ─────────────────────────────────── */
+
+let _pathChart = null;
+
+function renderPathologyChart(sortedPathologies) {
+  if (!sortedPathologies || sortedPathologies.length === 0) return;
+
+  const names  = sortedPathologies.map(p => p[0]);
+  const scores = sortedPathologies.map(p => p[1] * 100);
+  const colors = scores.map(s =>
+    s >= 70 ? 'rgba(255,77,106,0.85)'   :
+    s >= 50 ? 'rgba(245,166,35,0.85)'   :
+              'rgba(45,202,114,0.85)'
+  );
+
+  if (_pathChart) _pathChart.destroy();
+
+  const ctx = document.getElementById('path-chart');
+  if (!ctx) return;
+
+  _pathChart = new Chart(ctx, {
+    type: 'bar',
+    data: {
+      labels: names,
+      datasets: [{
+        data: scores,
+        backgroundColor: colors,
+        borderColor: colors.map(c => c.replace('0.85', '1')),
+        borderWidth: 1,
+        borderRadius: 4,
+      }]
+    },
+    options: {
+      indexAxis: 'y',
+      responsive: true,
+      maintainAspectRatio: false,
+      plugins: {
+        legend: { display: false },
+        tooltip: {
+          callbacks: {
+            label: ctx => ` ${ctx.raw.toFixed(1)}% confidence`
+          },
+          backgroundColor: '#1e2830',
+          titleColor: '#f0f4f8',
+          bodyColor: '#8fa0b4',
+          borderColor: 'rgba(255,255,255,0.07)',
+          borderWidth: 1,
+        }
+      },
+      scales: {
+        x: {
+          max: 100,
+          ticks: { color: '#4a5a6a', font: { family: 'JetBrains Mono', size: 10 }, callback: v => v + '%' },
+          grid: { color: 'rgba(255,255,255,0.04)' }
+        },
+        y: {
+          ticks: { color: '#8fa0b4', font: { family: 'JetBrains Mono', size: 11 } },
+          grid: { display: false }
+        }
+      }
+    }
+  });
+}
+
+/* ══════════════════════════════════════════════════════════
+   MAIN: runAnalysis
+   This function calls the Python backend (FastAPI/Flask wrapper
+   around your existing mmrag_graph). The API endpoint below
+   follows the same initial_state structure your Streamlit app uses.
+   ══════════════════════════════════════════════════════════ */
+async function runAnalysis() {
+  const query = document.getElementById('query-input').value.trim();
+  const pid   = parseInt(document.getElementById('patient-id').value);
+
+  if (!query) {
+    document.getElementById('query-input').focus();
+    return;
+  }
+
+  _patientId = pid;
+  _query     = query;
+
+  const cfg = getConfig();
+
+  // UI: show loading, hide landing & results
+  document.getElementById('landing').style.display  = 'none';
+  document.getElementById('results').classList.remove('visible');
+  document.getElementById('loading').classList.add('visible');
+  document.getElementById('run-btn').disabled = true;
+
+  animateLoadingSteps();
+
+  try {
+    /* ── API CALL ────────────────────────────────────────────
+       POST to your backend endpoint.
+       Replace '/api/analyze' with your actual endpoint URL.
+       The payload mirrors exactly what your Streamlit app
+       puts into initial_state.
+    ──────────────────────────────────────────────────────── */
+    const response = await fetch('/api/analyze', {
+      method:  'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        patient_id:            pid,
+        query:                 query,
+        user_role:             'doctor',
+        evidence_threshold:    cfg.evidenceThreshold,
+        response_threshold:    cfg.responseThreshold,
+        max_retrieval_retries: cfg.maxRetrievalRetries,
+        max_refinement_retries:cfg.maxRefinementRetries,
+      })
+    });
+
+    if (!response.ok) throw new Error(`API error: ${response.status}`);
+    const data = await response.json();
+
+    renderResults(data, cfg);
+
+  } catch (err) {
+    /* ── DEMO MODE ───────────────────────────────────────────
+       If the backend isn't connected yet, render demo data
+       so the UI layout is fully visible.
+    ──────────────────────────────────────────────────────── */
+    console.warn('Backend not connected — showing demo data:', err.message);
+    renderResults(getDemoData(query, pid, cfg), cfg);
+  }
+
+  document.getElementById('loading').classList.remove('visible');
+  document.getElementById('run-btn').disabled = false;
+}
+
+/* ── Loading step animation ─────────────────────────────── */
+
+function animateLoadingSteps() {
+  const steps = [
+    '▸ Initialising LangGraph pipeline',
+    '▸ Retrieving XRAY evidence from Qdrant',
+    '▸ Running evidence quality gate',
+    '▸ Checking consistency',
+    '▸ Calling Groq LLM for clinical reasoning',
+    '▸ Evaluating response quality gate',
+    '▸ Computing RAGAS groundedness',
+    '▸ Finalising summary',
+  ];
+
+  const container = document.getElementById('loading-steps');
+  container.innerHTML = '';
+
+  steps.forEach((step, i) => {
+    const el = document.createElement('div');
+    el.className = 'loading-step';
+    el.textContent = step;
+    el.style.animationDelay = `${i * 1.2}s`;
+    container.appendChild(el);
+  });
+}
+
+/* ══════════════════════════════════════════════════════════
+   RENDER RESULTS
+══════════════════════════════════════════════════════════ */
+function renderResults(data, cfg) {
+  _lastState = data;
+
+  document.getElementById('results').classList.add('visible');
+
+  const qs = data.quality_scores || {};
+  const evScore   = qs.evidence || 0;
+  const respScore = qs.response  || 0;
+  const avgScore  = (evScore + respScore) / 2;
+
+  /* pipeline summary */
+  document.getElementById('s-total').textContent     = data.total_iterations   || 0;
+  document.getElementById('s-retrieval').textContent = data.retrieval_attempts || 0;
+  document.getElementById('s-reasoning').textContent = data.reasoning_attempts || 0;
+  document.getElementById('s-refinement').textContent= data.refinement_count   || 0;
+
+  /* forced-complete alert */
+  const alertZone = document.getElementById('stat-row');
+  if (data.forced_complete) {
+    alertZone.insertAdjacentHTML('afterend', alertHTML(
+      `<strong>Response force-finalized</strong> — max refinement retries (${cfg.maxRefinementRetries}) reached before response gate passed. Review manually or increase the retry limit.`,
+      'warn'
+    ));
+  }
+
+  /* quality gates */
+  document.getElementById('gate-row').innerHTML =
+    renderGateCard('Evidence Quality', evScore,   cfg.evidenceThreshold) +
+    renderGateCard('Response Quality', respScore, cfg.responseThreshold) +
+    (() => {
+      const cls = avgScore >= 0.7 ? 'pass' : avgScore >= 0.5 ? 'warn' : 'fail';
+      const lbl = avgScore >= 0.7 ? '✓ EXCELLENT' : avgScore >= 0.5 ? '~ GOOD' : '✗ NEEDS REVIEW';
+      return `<div class="gate-card ${cls}">
+        <div class="gate-lbl">Overall Quality</div>
+        <div class="gate-score ${cls}">${avgScore.toFixed(2)}</div>
+        <div class="gate-badge ${cls}">${lbl}</div>
+        <div class="gate-delta">↑ avg of evidence + response</div>
+      </div>`;
+    })();
+
+  /* stage details */
+  renderStageDetails(data);
+
+  /* evidence */
+  renderEvidence(data.filtered_evidence || []);
+
+  /* pathology */
+  renderPathology(data.filtered_evidence || []);
+
+  /* response */
+  renderResponse(data.final_answer || '');
+
+  /* metrics */
+  renderMetrics(data.metrics || {});
+
+  /* scroll to results */
+  document.getElementById('results').scrollIntoView({ behavior: 'smooth', block: 'start' });
+}
+
+/* ── Stage details ─────────────────────────────────────── */
+
+function renderStageDetails(data) {
+  const eg = data.evidence_gate_result    || {};
+  const fr = data.evidence_filter_result  || {};
+  const rg = data.response_gate_result    || {};
+  const rf = data.refinement_result       || {};
+  const cs = data.consistency_result      || {};
+
+  const ev = data.evidence          || [];
+  const fev= data.filtered_evidence || [];
+  const removed = fr.removed_count  || 0;
+
+  const stage1HTML = `
+    <div class="mini-metrics">
+      <div class="mini-metric">
+        <div class="mini-metric-val">${ev.length}</div>
+        <div class="mini-metric-key">Original</div>
+      </div>
+      <div class="mini-metric">
+        <div class="mini-metric-val">${fev.length}</div>
+        <div class="mini-metric-key">Filtered</div>
+      </div>
+      <div class="mini-metric">
+        <div class="mini-metric-val">${removed}</div>
+        <div class="mini-metric-key">Removed</div>
+      </div>
+      <div class="mini-metric">
+        <div class="mini-metric-val">${(fr.quality_score || 0).toFixed(2)}</div>
+        <div class="mini-metric-key">Quality Score</div>
+      </div>
+    </div>
+    ${alertHTML('Gate decision: <strong>' + (eg.decision || 'N/A') + '</strong>' + (fr.feedback ? ' — ' + fr.feedback : ''), eg.decision === 'PASS' ? 'success' : 'warn')}
+    ${cs.passed === false
+      ? alertHTML('Consistency issues: ' + (cs.issues || []).join(', '), 'warn')
+      : cs.passed === true
+        ? alertHTML('Evidence consistency check passed.', 'success')
+        : ''}
+  `;
+
+  const refs = (rf.refinements_applied || []).map(r => r.replace(/_/g, ' ').replace(/\b\w/g, c => c.toUpperCase())).join(' · ');
+  const stage3HTML = `
+    <div class="mini-metrics" style="grid-template-columns:1fr 1fr;">
+      <div class="mini-metric">
+        <div class="mini-metric-val">${(rg.score || 0).toFixed(3)}</div>
+        <div class="mini-metric-key">Gate Score</div>
+      </div>
+      <div class="mini-metric">
+        <div class="mini-metric-val" style="font-size:1rem">${rg.decision || 'N/A'}</div>
+        <div class="mini-metric-key">Gate Decision</div>
+      </div>
+    </div>
+    ${refs
+      ? alertHTML('Refinements applied: ' + refs, 'info')
+      : alertHTML('No refinements required.', 'success')}
+  `;
+
+  document.getElementById('stage-details').innerHTML =
+    makeExpander('Stage 1 — Evidence Retrieval & Filtering', stage1HTML) +
+    makeExpander('Stage 3 — Clinical Reasoning & Refinement', stage3HTML);
+}
+
+/* ── Evidence ──────────────────────────────────────────── */
+
+function renderEvidence(evidence) {
+  const el = document.getElementById('evidence-section');
+
+  if (!evidence.length) {
+    el.innerHTML = alertHTML('No relevant evidence found for this query.', 'error');
+    return;
+  }
+
+  let html = alertHTML(`Found <strong>${evidence.length}</strong> relevant evidence items after quality filtering.`, 'success');
+
+  evidence.forEach((e, idx) => {
+    const rel   = e.relevance_score || 0;
+    const relColor = rel >= 0.6 ? 'var(--green)' : rel >= 0.35 ? 'var(--amber)' : 'var(--text-3)';
+
+    const imgHTML = e.has_image && e.image_path
+      ? `<div class="ev-img-wrap"><img src="/api/image?path=${encodeURIComponent(e.image_path)}" alt="X-ray image ${idx+1}" loading="lazy" /></div>`
+      : `<div class="ev-img-placeholder"><span style="font-size:1.8rem">🩻</span><span>No image</span></div>`;
+
+    const innerHTML = `
+      <div class="evidence-inner">
+        <div>
+          <div style="display:flex;align-items:center;gap:12px;margin-bottom:8px;">
+            <span style="font-family:var(--font-mono);font-size:0.65rem;color:var(--cyan);letter-spacing:0.08em;text-transform:uppercase;">Evidence · ${String(idx+1).padStart(2,'0')}</span>
+            <span style="font-family:var(--font-mono);font-size:0.65rem;background:var(--bg-3);border:1px solid var(--border);border-radius:4px;padding:1px 7px;color:var(--text-3);">${e.modality || 'N/A'}</span>
+            <span style="font-family:var(--font-mono);font-size:0.7rem;color:${relColor};">◉ ${rel.toFixed(3)}</span>
+          </div>
+          <div class="ev-report">${e.report_text || '<em style="color:var(--text-4)">No report text</em>'}</div>
+          <div class="ev-meta">
+            <div class="ev-meta-item"><span class="ev-meta-key">Organ </span><span class="ev-meta-val">${e.organ || 'N/A'}</span></div>
+            <div class="ev-meta-item"><span class="ev-meta-key">Modality </span><span class="ev-meta-val">${e.modality || 'N/A'}</span></div>
+            <div class="ev-meta-item"><span class="ev-meta-key">Image </span><span class="ev-meta-val">${e.has_image ? 'Yes' : 'No'}</span></div>
+          </div>
+        </div>
+        <div>${imgHTML}</div>
+      </div>`;
+
+    html += makeExpander(
+      `Evidence ${idx+1} &nbsp;·&nbsp; ${e.modality || 'N/A'} &nbsp;·&nbsp; Relevance: ${rel.toFixed(2)}`,
+      innerHTML
+    );
+  });
+
+  el.innerHTML = html;
+}
+
+/* ── Pathology ─────────────────────────────────────────── */
+
+function renderPathology(evidence) {
+  const el = document.getElementById('pathology-section');
+
+  const hasData = evidence.some(e => e.pathology_scores && Object.keys(e.pathology_scores).length > 0);
+
+  if (!hasData) {
+    el.innerHTML = alertHTML('No pathology detection data available for this query.', 'info');
+    return;
+  }
+
+  // Aggregate max scores
+  const agg = {};
+  evidence.forEach(e => {
+    Object.entries(e.pathology_scores || {}).forEach(([p, s]) => {
+      agg[p] = Math.max(agg[p] || 0, s);
+    });
+  });
+
+  const sorted = Object.entries(agg).sort((a,b) => b[1] - a[1]).slice(0, 8);
+
+  let html = `
+  <div class="chart-wrap">
+    <div style="height:${Math.max(200, sorted.length * 42)}px;">
+      <canvas id="path-chart"></canvas>
+    </div>
+    <div class="confidence-legend">
+      <div class="legend-item"><div class="legend-dot" style="background:var(--red)"></div>High ≥ 70%</div>
+      <div class="legend-item"><div class="legend-dot" style="background:var(--amber)"></div>Moderate 50–70%</div>
+      <div class="legend-item"><div class="legend-dot" style="background:var(--green)"></div>Low &lt; 50%</div>
+    </div>
+  </div>`;
+
+  // Per-image breakdown
+  evidence.forEach((e, idx) => {
+    if (!e.pathology_findings) return;
+
+    const scores = Object.entries(e.pathology_scores || {})
+      .filter(([,s]) => s > 0.01)
+      .sort((a,b) => b[1] - a[1])
+      .slice(0, 10);
+
+    const tableHTML = scores.length > 0
+      ? `<table class="data-table" style="margin-top:12px;">
+          <thead><tr><th>Pathology</th><th>Probability</th><th>Confidence</th></tr></thead>
+          <tbody>
+            ${scores.map(([p,s]) => {
+              const ci = confidenceLabel(s*100);
+              return `<tr>
+                <td>${p}</td>
+                <td style="font-family:var(--font-mono);color:var(--text-1);">${(s*100).toFixed(2)}%</td>
+                <td style="color:${ci.cls};">${ci.label}</td>
+              </tr>`;
+            }).join('')}
+          </tbody>
+        </table>`
+      : alertHTML('All pathology scores below 1% threshold.', 'info');
+
+    html += makeExpander(
+      `Image ${idx+1} — Pathology Analysis`,
+      `<p style="font-size:0.85rem;color:var(--text-2);line-height:1.65;margin-bottom:10px;">${e.pathology_findings}</p>${tableHTML}`
+    );
+  });
+
+  el.innerHTML = html;
+
+  // chart render after DOM
+  setTimeout(() => renderPathologyChart(sorted), 50);
+}
+
+/* ── Clinical Response ─────────────────────────────────── */
+
+function renderResponse(answer) {
+  const el = document.getElementById('response-section');
+  const secs = parseResponseSections(answer);
+
+  if (Object.values(secs).some(v => v.trim())) {
+    let html = '<div class="response-card">';
+    if (secs.diagnosis) html += `
+      <div class="response-section">
+        <div class="response-sec-label diagnosis"><span class="response-dot diagnosis"></span>Diagnosis / Impression</div>
+        <div class="response-text">${formatResponseText(secs.diagnosis)}</div>
+      </div>`;
+    if (secs.evidence) html += `
+      <div class="response-section">
+        <div class="response-sec-label evidence-sec"><span class="response-dot evidence-sec"></span>Supporting Evidence</div>
+        <div class="response-text">${formatResponseText(secs.evidence)}</div>
+      </div>`;
+    if (secs.recommendations) html += `
+      <div class="response-section">
+        <div class="response-sec-label recommendations"><span class="response-dot recommendations"></span>Next Steps / Recommendations</div>
+        <div class="response-text">${formatResponseText(secs.recommendations)}</div>
+      </div>`;
+    html += '</div>';
+    el.innerHTML = html;
+  } else {
+    el.innerHTML = `<div class="response-card"><div class="response-section">
+      <div class="response-text">${formatResponseText(answer)}</div>
+    </div></div>`;
+  }
+}
+
+/* ── Metrics ───────────────────────────────────────────── */
+
+function renderMetrics(metrics) {
+  const el = document.getElementById('metrics-section');
+
+  const preferred = ['Precision@K', 'Recall@K', 'MRR', 'Groundedness', 'ClinicalCorrectness', 'Completeness'];
+  const hidden    = new Set(['GroundednessSimple', 'EvaluationNote', 'GroundednessSource']);
+  const desc = {
+    'Precision@K':        'TP in top-K / K',
+    'Recall@K':           'TP in top-K / total relevant',
+    'MRR':                '1 / rank of first hit',
+    'Groundedness':       'RAGAS faithfulness',
+    'ClinicalCorrectness':'semantic sim vs impressions',
+    'Completeness':       'citation + structure + rec',
+  };
+
+  const visible = preferred.filter(k => k in metrics && !hidden.has(k));
+
+  if (!visible.length) {
+    el.innerHTML = alertHTML('No evaluation metrics available.', 'warn');
+    return;
+  }
+
+  let html = `<div class="metrics-grid stagger">`;
+  visible.forEach(k => {
+    const v = parseFloat(metrics[k]);
+    const c = isNaN(v) ? 'var(--text-2)' : scoreColor(v);
+    html += `
+    <div class="metric-card">
+      <div class="metric-val" style="color:${c};">${isNaN(v) ? 'N/A' : v.toFixed(3)}</div>
+      <div class="metric-key">${k}</div>
+      <div class="metric-desc">${desc[k] || ''}</div>
+    </div>`;
+  });
+  html += '</div>';
+
+  const gs = metrics.GroundednessSource;
+  if (gs) {
+    const gsColor = gs === 'ragas' ? 'var(--green)' : 'var(--amber)';
+    html += `<div style="font-family:var(--font-mono);font-size:0.65rem;color:${gsColor};margin-top:6px;">
+      Groundedness source: ${gs}
+    </div>`;
+  }
+
+  el.innerHTML = html;
+}
+
+/* ── Export ─────────────────────────────────────────────── */
+
+function exportTxt() {
+  if (!_lastState) return;
+
+  const d  = _lastState;
+  const qs = d.quality_scores || {};
+  const m  = d.metrics || {};
+  const hidden = new Set(['GroundednessSimple', 'EvaluationNote', 'GroundednessSource']);
+
+  const exportMetrics = Object.entries(m)
+    .filter(([k]) => !hidden.has(k))
+    .map(([k,v]) => `${k}: ${v}`)
+    .join('\n');
+
+  const txt = `CLINICAL DECISION SUPPORT REPORT
+${'='.repeat(60)}
+
+Patient ID : ${_patientId}
+Query      : ${_query}
+
+PIPELINE SUMMARY
+${'-'.repeat(60)}
+Total Iterations   : ${d.total_iterations || 0}
+Retrieval Attempts : ${d.retrieval_attempts || 0}
+Reasoning Attempts : ${d.reasoning_attempts || 0}
+Refinement Count   : ${d.refinement_count || 0}
+Force-Finalized    : ${d.forced_complete || false}
+
+QUALITY SCORES
+${'-'.repeat(60)}
+Evidence Quality : ${(qs.evidence || 0).toFixed(3)}
+Response Quality : ${(qs.response || 0).toFixed(3)}
+Overall Quality  : ${(((qs.evidence||0) + (qs.response||0)) / 2).toFixed(3)}
+
+CLINICAL RESPONSE
+${'-'.repeat(60)}
+${d.final_answer || ''}
+
+EVALUATION METRICS
+${'-'.repeat(60)}
+${exportMetrics}
+`;
+
+  downloadFile(`clinicalmind_patient_${_patientId}.txt`, txt, 'text/plain');
+}
+
+function exportJson() {
+  if (!_lastState) return;
+
+  const d  = _lastState;
+  const hidden = new Set(['GroundednessSimple', 'EvaluationNote', 'GroundednessSource']);
+
+  const exportData = {
+    patient_id: _patientId,
+    query: _query,
+    pipeline_summary: {
+      total_iterations:    d.total_iterations    || 0,
+      retrieval_attempts:  d.retrieval_attempts  || 0,
+      reasoning_attempts:  d.reasoning_attempts  || 0,
+      refinement_count:    d.refinement_count    || 0,
+      forced_complete:     d.forced_complete     || false,
+    },
+    quality_scores:  d.quality_scores || {},
+    final_answer:    d.final_answer   || '',
+    metrics:         Object.fromEntries(
+      Object.entries(d.metrics || {}).filter(([k]) => !hidden.has(k))
+    ),
+    evidence_count: (d.filtered_evidence || []).length,
+  };
+
+  downloadFile(`clinicalmind_patient_${_patientId}.json`, JSON.stringify(exportData, null, 2), 'application/json');
+}
+
+function downloadFile(name, content, mime) {
+  const a   = document.createElement('a');
+  const url = URL.createObjectURL(new Blob([content], { type: mime }));
+  a.href     = url;
+  a.download = name;
+  a.click();
+  URL.revokeObjectURL(url);
+}
+
+/* ══════════════════════════════════════════════════════════
+   DEMO DATA
+   Shown when backend is not yet connected so the UI layout
+   is fully testable in a browser without Python running.
+══════════════════════════════════════════════════════════ */
+function getDemoData(query, pid, cfg) {
+  return {
+    total_iterations:    4,
+    retrieval_attempts:  1,
+    reasoning_attempts:  1,
+    refinement_count:    2,
+    forced_complete:     false,
+    quality_scores: { evidence: 0.52, response: 0.74 },
+    evidence_gate_result:   { decision: 'PASS', score: 0.52 },
+    evidence_filter_result: { quality_score: 0.52, removed_count: 1, feedback: 'Evidence relevance is acceptable.' },
+    response_gate_result:   { decision: 'PASS', score: 0.74 },
+    refinement_result:      { refinements_applied: ['citation_fix'] },
+    consistency_result:     { passed: true, issues: [] },
+    evidence:          [{ modality:'XRAY' }, { modality:'XRAY' }],
+    filtered_evidence: [
+      {
+        modality: 'XRAY', organ: 'Chest', relevance_score: 0.49, has_image: false,
+        report_text: 'Indication: Positive TB test. Comparison: None. Findings: The cardiac silhouette and mediastinum size are within normal limits. There is no pulmonary edema. There is no focal consolidation. There are no signs of a pleural effusion. Impression: Normal chest x-ray.',
+        pathology_scores: { Atelectasis:0.08, Cardiomegaly:0.03, Effusion:0.12, Pneumonia:0.06, Consolidation:0.04 },
+        pathology_findings: 'No significant pathologies detected above threshold.',
+      },
+      {
+        modality: 'XRAY', organ: 'Chest', relevance_score: 0.47, has_image: false,
+        report_text: 'Findings: Mild interstitial markings bilaterally. No acute focal consolidation. Heart size is normal. Impression: No acute cardiopulmonary findings.',
+        pathology_scores: { Atelectasis:0.22, Cardiomegaly:0.07, Effusion:0.31, Pneumonia:0.11, Infiltration:0.18 },
+        pathology_findings: 'Mild infiltration pattern noted. Effusion probability marginal.',
+      }
+    ],
+    final_answer: `Diagnosis / Impression:
+- No acute cardiopulmonary abnormality identified based on available imaging evidence. [R1]
+
+Supporting Evidence:
+- Cardiac silhouette and mediastinum are within normal limits with no evidence of pulmonary edema. [R1]
+- No focal consolidation or acute infiltrates identified on bilateral fields. [R2]
+- No pleural effusion identified on available chest radiographs. [R1][R2]
+
+Next Steps / Recommendations:
+- Clinical correlation is recommended given positive TB test history. [Rx]
+- Follow-up imaging if symptoms persist or worsen. [Rx]`,
+    metrics: {
+      'Precision@K':         0.714,
+      'Recall@K':            0.625,
+      'MRR':                 1.000,
+      'Groundedness':        0.833,
+      'ClinicalCorrectness': 0.672,
+      'Completeness':        1.000,
+      'GroundednessSource':  'ragas',
+    }
+  };
+}
+
+/* ── Keyboard shortcut: Ctrl+Enter to run ────────────────── */
+
+document.getElementById('query-input').addEventListener('keydown', e => {
+  if ((e.ctrlKey || e.metaKey) && e.key === 'Enter') runAnalysis();
+});
+</script>
+
+</body>
+</html>

@@ -10,7 +10,7 @@ from evaluation.diagnosis_evaluator import (
     clinical_correctness,
     completeness,
     groundedness_ragas,
-    groundedness_simple
+    groundedness_simple,
 )
 
 from agents.image_insight_agent_llava_med import image_insight_agent_llava_med
@@ -23,7 +23,7 @@ GROQ_API_KEY = os.getenv("GROQ_API_KEY")
 if not GROQ_API_KEY:
     raise RuntimeError("❌ GROQ_API_KEY not found")
 
-GROQ_URL  = "https://api.groq.com/openai/v1/chat/completions"
+GROQ_URL   = "https://api.groq.com/openai/v1/chat/completions"
 MODEL_NAME = "llama-3.1-8b-instant"
 
 logger = get_logger("ReasoningAgent")
@@ -49,15 +49,6 @@ def _extract_impression(report_text: str) -> str:
     return report_text[idx + len("impression:"):].strip()
 
 
-# FIX 1: Added ground_truth_answer as a parameter.
-#   - It comes from trial.xlsx (final_answer column) via:
-#       test.py → initial_state["ground_truth_answer"]
-#             → MMRAgState["ground_truth_answer"]
-#             → reasoning_node
-#             → here
-#   - Used ONLY for Precision@K / Recall@K / MRR evaluation.
-#   - It is NEVER shown to the LLM.
-#   - Default "" → metrics return 0.0 gracefully (streamlit mode has no ground truth).
 def clinical_reasoning_agent(
     query: str,
     evidence: list,
@@ -67,24 +58,41 @@ def clinical_reasoning_agent(
     Clinical reasoning agent.
 
     Args:
-        query:                Clinical query string.
-        evidence:             Filtered, ranked evidence dicts (relevance_score desc).
-        user_role:            Kept for backward compatibility.
-        ground_truth_answer:  Reference answer from trial.xlsx. Empty in Streamlit mode.
-                              Used ONLY for retrieval metric evaluation, never shown to LLM.
+        query:     Clinical query string.
+        evidence:  Filtered, ranked evidence dicts (relevance_score desc).
+                   Each dict must have keys: report_text, modality, image_path (optional),
+                   indication, comparison, findings (used by precision_recall_mrr).
+        user_role: Kept for backward compatibility / RBAC logging.
+
+    Retrieval metrics (Precision@K, Recall@K, MRR):
+        Computed via precision_recall_mrr() using a QUERY-BASED approach.
+        Each evidence unit (indication / comparison / findings text, or image)
+        is scored by cosine similarity to the query embedding.
+        A unit is "relevant" if its similarity meets the configured threshold.
+        This is pool-based IR evaluation — no external ground-truth set is
+        needed, and Recall@K is measured against the relevant units in the
+        retrieved pool.
+
+    Groundedness:
+        Computed via RAGAS Faithfulness (LLM-as-judge).  Falls back to
+        citation-counting heuristic if RAGAS fails.
+
+    ClinicalCorrectness:
+        Semantic similarity between generated answer and report impressions
+        from the retrieved evidence.  Measures whether the answer agrees
+        with what the retrieved records actually say.
     """
 
     logger.info("Starting clinical reasoning")
     logger.info(f"Evidence items received: {len(evidence)}")
-    
 
-    # Used for ClinicalCorrectness metric (LLM answer vs report impressions)
+    # Used by ClinicalCorrectness: does the LLM answer agree with retrieved impressions?
     ground_truth_impressions = [e["report_text"] for e in evidence]
 
-    # Image analysis
+    # Image analysis via LLaVA-Med
     image_insights = image_insight_agent_llava_med(evidence, query)
 
-    # Pathology findings
+    # Pathology findings from DenseNet (added by evidence_aggregation_agent)
     pathology_findings = []
     for idx, e in enumerate(evidence, start=1):
         if "pathology_findings" in e and e["pathology_findings"]:
@@ -166,25 +174,27 @@ NOW RESPOND IN THE EXACT FORMAT ABOVE:
     response = requests.post(GROQ_URL, headers=headers, json=payload)
     response.raise_for_status()
 
-    raw_answer  = response.json()["choices"][0]["message"]["content"]
+    raw_answer   = response.json()["choices"][0]["message"]["content"]
     final_answer = enforce_structure(raw_answer)
 
-    # ------------------------------------------------------------------
+    # ─────────────────────────────────────────────────────────────────────────
     # METRICS
-    # ------------------------------------------------------------------
+    # ─────────────────────────────────────────────────────────────────────────
+
     metrics = {}
 
-    # FIX 2: Pass `evidence` directly (list of dicts), NOT retrieved_texts
-    # (list of strings).  precision_recall_mrr does e.get("report_text", "")
-    # internally, so it needs dicts.  ground_truth_answer comes from the
-    # function parameter — it is the Excel reference answer, NOT the evidence.
+    # Query-based retrieval metrics.
+    # precision_recall_mrr scores each evidence unit (indication / comparison /
+    # findings / image) by cosine similarity to the query.  A unit is "relevant"
+    # if its similarity >= text_threshold (text) or image_threshold (image).
+    # See diagnosis_evaluator.py for formula details and research-paper caveats.
     metrics.update(
         precision_recall_mrr(
-            retrieved_docs=evidence,               # list of dicts, ranked
+            retrieved_docs=evidence,
             query=query,
             k=5,
             text_threshold=0.30,
-            image_threshold=0.30
+            image_threshold=0.30,
         )
     )
 
@@ -198,9 +208,6 @@ NOW RESPOND IN THE EXACT FORMAT ABOVE:
     metrics["GroundednessSource"] = g["source"]
     metrics["GroundednessSimple"] = groundedness_simple(final_answer)
 
-    # ClinicalCorrectness: does LLM answer match what the reports say?
-    # Using report impressions as reference is correct here — it measures
-    # whether the generated answer agrees with the retrieved evidence.
     metrics["ClinicalCorrectness"] = clinical_correctness(
         final_answer, ground_truth_impressions
     )
