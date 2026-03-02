@@ -28,24 +28,20 @@ class MMRAgState(TypedDict):
     query:        str
     user_role:    str
 
-    # ── UI-configurable thresholds (Issue 9 fix) ──────────────────────
-    # These are set in initial_state by streamlit_app.py / test.py.
-    # Default values are used when not provided (plain graph.invoke calls).
-    evidence_threshold:     float   # EvidenceQualityGate pass threshold
-    response_threshold:     float   # ResponseQualityGate pass threshold
-    max_retrieval_retries:  int     # max xray fetch + aggregation cycles
-    max_refinement_retries: int     # max response_refine cycles
+    # ── UI-configurable thresholds ─────────────────────────────────────────────
+    evidence_threshold:     float
+    response_threshold:     float
+    max_retrieval_retries:  int
+    max_refinement_retries: int
 
     xray_results:      List[Any]
     evidence:          List[Any]
     filtered_evidence: List[Any]
 
-    # Issue 4 fix: retrieval_attempts now incremented in xray_node (not aggregation_node)
     retrieval_attempts: int
     reasoning_attempts: int
     refinement_count:   int
 
-    # Issue 2 fix: track whether pipeline was force-finalized
     forced_complete: bool
 
     final_answer: str
@@ -70,9 +66,6 @@ class MMRAgState(TypedDict):
 # =============================================================================
 
 def xray_node(state):
-    # Issue 4 FIX: increment retrieval_attempts HERE (at actual retrieval),
-    # not inside aggregation_node.  Previously the counter was semantically
-    # wrong — it counted aggregation cycles, not retrieval cycles.
     return {
         "xray_results": xray_agent(state["patient_id"], state["query"]),
         "retrieval_attempts": state.get("retrieval_attempts", 0) + 1,
@@ -84,7 +77,6 @@ def xray_contract_node(state):
 
 
 def aggregation_node(state):
-    # Issue 4 FIX: retrieval_attempts is no longer incremented here.
     evidence = aggregate_evidence(
         state["xray_results"],
         allowed_modalities=["XRAY"],
@@ -108,7 +100,6 @@ def evidence_quality_filter_node(state):
 
 
 def evidence_quality_gate_node(state):
-    # Issue 9 FIX: respect threshold from state (set by UI / test runner).
     threshold = state.get("evidence_threshold", 0.4)
     gate = EvidenceQualityGate(threshold=threshold)
     return {
@@ -141,10 +132,20 @@ def reasoning_node(state):
         "reasoning_attempts": state.get("reasoning_attempts", 0) + 1,
     }
 
-
 def clinical_safety_node(state):
-    return {"safety_result": validate_clinical_safety(state["final_answer"])}
+    pathology_findings = []
+    for idx, e in enumerate(state.get("filtered_evidence", []), start=1):
+        pf = e.get("pathology_findings", "")
+        if pf and "No significant" not in pf and "No image available" not in pf:
+            pathology_findings.append(f"[R{idx}] {pf}")
 
+    return {
+        "safety_result": validate_clinical_safety(
+            response=state["final_answer"],
+            pathology_findings=pathology_findings if pathology_findings else None,
+            evidence=state.get("filtered_evidence", []),
+        )
+    }
 
 def xray_anatomy_node(state):
     return {"anatomy_result": validate_xray_anatomy(state["final_answer"])}
@@ -169,7 +170,6 @@ def structure_check_node(state):
 
 
 def response_quality_gate_node(state):
-    # Issue 9 FIX: respect threshold from state.
     threshold = state.get("response_threshold", 0.7)
     gate = ResponseQualityGate(threshold=threshold)
     return {
@@ -187,13 +187,10 @@ def summary_node(state):
             "evidence": state["evidence_gate_result"]["score"],
             "response": state["response_gate_result"]["score"],
         },
-        # Issue 3 FIX: include refinement_count in total_iterations.
-        # Previously only retrieval + reasoning were summed, which under-
-        # reported actual pipeline effort in the UI and exports.
         "total_iterations": (
             state.get("retrieval_attempts", 0)
             + state.get("reasoning_attempts", 0)
-            + state.get("refinement_count", 0)   # ← was missing
+            + state.get("refinement_count", 0)
         ),
     }
 
@@ -205,8 +202,7 @@ def summary_node(state):
 def should_retry_xray(state):
     if state["retrieval_contract_result"]["passed"]:
         return "proceed"
-    # Issue 9 FIX: use configurable max from state (default 2).
-    max_r = state.get("max_retrieval_retries", 2)
+    max_r    = state.get("max_retrieval_retries", 2)
     attempts = state.get("retrieval_attempts", 0)
     if attempts >= max_r:
         logger.debug(f"[XrayContract] Max retrieval attempts ({attempts}) reached — forcing proceed")
@@ -221,7 +217,6 @@ def should_retry_retrieval(state):
     logger.debug(f"[EvidenceGate] attempt={attempts}, decision={decision}")
     if decision == "PASS":
         return "proceed"
-    # Issue 9 FIX: use configurable max from state.
     max_r = state.get("max_retrieval_retries", 2)
     if attempts >= max_r:
         return "proceed"
@@ -229,10 +224,6 @@ def should_retry_retrieval(state):
 
 
 def should_proceed_after_consistency(state):
-    # Issue 1 FIX: evidence_consistency now AFFECTS control flow.
-    # Previously there was only a hard add_edge("evidence_consistency", "reason"),
-    # making the consistency check purely informational (result stored but ignored).
-    # Now: if consistency fails AND we still have retry budget, go back to xray.
     result  = state.get("consistency_result", {})
     passed  = result.get("passed", True)
     issues  = result.get("issues", [])
@@ -263,12 +254,9 @@ def should_refine_response(state):
     if state["response_gate_result"]["decision"] == "PASS":
         return "complete"
 
-    # Issue 9 FIX: use configurable max refinements from state.
     max_ref = state.get("max_refinement_retries", 2)
 
     if state.get("refinement_count", 0) >= max_ref:
-        # Issue 2 FIX: log a warning so operators know quality was force-finalized,
-        # and set forced_complete=True in state so test.py / Streamlit can flag it.
         score = state["response_gate_result"].get("score", 0.0)
         logger.warning(
             f"[ResponseGate] Max refinements ({max_ref}) reached — "
@@ -319,9 +307,6 @@ def build_mmrag_graph():
         {"retry": "xray", "proceed": "evidence_consistency"},
     )
 
-    # Issue 1 FIX: replaced hard edge with conditional edge.
-    # "retry"   → back to xray (re-fetch if consistency fails + budget allows)
-    # "proceed" → forward to reason
     graph.add_conditional_edges(
         "evidence_consistency",
         should_proceed_after_consistency,
@@ -344,15 +329,13 @@ def build_mmrag_graph():
         {"refine": "response_refine", "proceed": "response_gate"},
     )
 
-    # Issue 2 FIX: "forced_complete" is a new branch that reaches summary
-    # with forced_complete=True set in state, so callers can detect it.
     graph.add_conditional_edges(
         "response_gate",
         should_refine_response,
         {
             "refine":          "response_refine",
             "complete":        "summary",
-            "forced_complete": "summary",   # ← new branch
+            "forced_complete": "summary",
         },
     )
 

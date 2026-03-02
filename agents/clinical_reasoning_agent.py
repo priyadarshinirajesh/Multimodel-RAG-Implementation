@@ -55,32 +55,18 @@ def clinical_reasoning_agent(
     user_role: str = "doctor",
 ):
     """
-    Clinical reasoning agent.
+    Clinical reasoning agent — upgraded to Clinical Assistant level.
+
+    Produces four-section structured responses:
+      - Clinical Impression  (present / absent / indeterminate + confidence)
+      - Evidence Synthesis   (unique observations, discordance notes)
+      - Differential Considerations (primary + alternative diagnoses)
+      - Actionable Next Steps (specific actions, not generic filler)
 
     Args:
         query:     Clinical query string.
         evidence:  Filtered, ranked evidence dicts (relevance_score desc).
-                   Each dict must have keys: report_text, modality, image_path (optional),
-                   indication, comparison, findings (used by precision_recall_mrr).
         user_role: Kept for backward compatibility / RBAC logging.
-
-    Retrieval metrics (Precision@K, Recall@K, MRR):
-        Computed via precision_recall_mrr() using a QUERY-BASED approach.
-        Each evidence unit (indication / comparison / findings text, or image)
-        is scored by cosine similarity to the query embedding.
-        A unit is "relevant" if its similarity meets the configured threshold.
-        This is pool-based IR evaluation — no external ground-truth set is
-        needed, and Recall@K is measured against the relevant units in the
-        retrieved pool.
-
-    Groundedness:
-        Computed via RAGAS Faithfulness (LLM-as-judge).  Falls back to
-        citation-counting heuristic if RAGAS fails.
-
-    ClinicalCorrectness:
-        Semantic similarity between generated answer and report impressions
-        from the retrieved evidence.  Measures whether the answer agrees
-        with what the retrieved records actually say.
     """
 
     logger.info("Starting clinical reasoning")
@@ -92,65 +78,157 @@ def clinical_reasoning_agent(
     # Image analysis via LLaVA-Med
     image_insights = image_insight_agent_llava_med(evidence, query)
 
-    # Pathology findings from DenseNet (added by evidence_aggregation_agent)
+    # ── Pathology findings from DenseNet (added by evidence_aggregation_agent) ──
     pathology_findings = []
     for idx, e in enumerate(evidence, start=1):
         if "pathology_findings" in e and e["pathology_findings"]:
-            pathology_findings.append(f"[R{idx}] {e['pathology_findings']}")
+            pf = e["pathology_findings"]
+            # Only include if something meaningful was detected
+            if "No significant pathologies" not in pf and "No image available" not in pf:
+                pathology_findings.append(f"[R{idx}] {pf}")
 
-    combined_evidence = [
-        f"[R{i}] ({e['modality']}) {_remove_impression(e.get('report_text', ''))}"
-        for i, e in enumerate(evidence, start=1)
-    ]
+    # ── Build combined evidence list ──────────────────────────────────────────
+    combined_evidence = []
+    for i, e in enumerate(evidence,start=1):
+        report = _remove_impression(e.get('report_text',''))
+        if report.strip():
+            combined_evidence.append(f"[R{i}] ({e['modality']}) {report}")
+        else:
+            combined_evidence.append(
+                f"[R{i}] ({e['modality']}) [NO TEXT REPORT AVAILABLE — imaging only]"
+            )
     combined_evidence.extend(image_insights)
 
+    # ── Check if text report evidence exists (for confidence indicator logic) ─
+    has_text_reports = any(
+        e.get("report_text", "").strip()
+        for e in evidence
+    )
+
+    # ── Build pathology summary for discordance detection ─────────────────────
+    pathology_summary = []
+    for idx, e in enumerate(evidence, start=1):
+        top = e.get("top_pathologies", [])
+        if top:
+            items = ", ".join([f"{p}: {s*100:.1f}%" for p, s in top])
+            pathology_summary.append(f"[R{idx}] CNN detected: {items}")
+
     system_prompt = (
-        "You are a clinical decision-support AI for medical professionals. "
-        "Provide detailed, evidence-based clinical reasoning."
+        "You are a senior clinical decision-support AI assisting medical professionals. "
+        "Your job is to synthesize multi-source evidence into actionable clinical intelligence. "
+        "You clearly distinguish between text report evidence and AI image findings, "
+        "flag discordances between CNN results and text reports, "
+        "and always provide specific, clinically meaningful next steps — never generic filler."
     )
 
     prompt = f"""
 You are a clinical decision-support AI.
 
-PATHOLOGY DETECTION RESULTS (from DenseNet CNN):
-{chr(10).join(pathology_findings) if pathology_findings else "No pathologies detected above threshold"}
+========================================
+PATHOLOGY DETECTION RESULTS (DenseNet CNN — AI model, not a radiologist):
+========================================
+{chr(10).join(pathology_summary) if pathology_summary else "No pathologies detected above threshold by CNN."}
 
-ABSOLUTE RULES (MANDATORY):
-- Use ONLY the evidence provided below.
-- DO NOT infer, assume, or diagnose beyond evidence.
-- EVERY factual sentence MUST end with a citation like [R1], [R2], etc.
-- If evidence is insufficient, explicitly write: "Insufficient evidence [Rx]".
+========================================
+ABSOLUTE RULES (MANDATORY — NEVER BREAK THESE):
+========================================
+1. Use ONLY the evidence provided below. DO NOT infer or hallucinate beyond evidence.
+2. EVERY factual sentence MUST end with a citation: [R1], [R2], [R1-IMAGE], etc.
+3. If evidence is insufficient for a finding → write: "Insufficient evidence to determine [X]. [Rx]"
+4. Do NOT repeat the same finding in different words across bullets — merge duplicates into one.
+5. PHANTOM CITATION RULE (CRITICAL):
+   Evidence items marked [NO TEXT REPORT AVAILABLE] have NO text data.
+   You MUST NOT use [R#] (text citation) for any such item.
+   You MAY only use [R#-IMAGE] if an image insight exists for that item.
+   If neither text nor image insight exists → do not cite that evidence item at all.
+6. CLINICAL IMPRESSION RULE: The Clinical Impression must answer the clinical question, NOT restate patient symptoms.
+   
+========================================
+EVIDENCE HIERARCHY (FOLLOW STRICTLY):
+========================================
+- TEXT REPORTS [R1], [R2]  →  PRIMARY source. Base Clinical Impression primarily on these.
+- IMAGE INSIGHTS [R1-IMAGE] →  SECONDARY source. Use to support text, NEVER replace it.
+- CNN PATHOLOGY SCORES      →  SUPPLEMENTARY. Cross-check against text reports.
 
-EVIDENCE USAGE RULES:
-- Prefer text reports over image descriptions when both exist.
-- Image insights are SUPPORTING only, not primary diagnostic proof.
-- Ignore modalities that are clinically irrelevant to the question.
+If a finding is supported ONLY by image/CNN with NO text report backing:
+→ Begin that sentence with: "Based on imaging only (limited confidence):"
 
+If text report AND CNN findings CONTRADICT each other:
+→ You MUST write a "Discordance Note:" bullet in Evidence Synthesis.
+
+========================================
+DISCORDANCE DETECTION RULE:
+========================================
+Compare the CNN pathology results above against the text reports in the evidence below.
+- If CNN detected a pathology above 40% confidence BUT text report does NOT mention it → flag it.
+- If text report mentions a finding that CNN did NOT detect → flag it.
+- Write discordance as: "Discordance Note: CNN detected [X] at [Y]% but text report states [Z]. [R1, R1-IMAGE]"
+
+========================================
+ANTI-REPETITION RULE:
+========================================
+Each bullet in Evidence Synthesis must make a UNIQUE clinical observation.
+If two bullets say the same thing in different words → merge them into one.
+Minimum 2, maximum 4 bullets in Evidence Synthesis.
+
+========================================
+BANNED RECOMMENDATION PHRASES (NEVER USE THESE):
+========================================
+- "Further evaluation by a healthcare professional is necessary"
+- "Consult a doctor"
+- "Seek medical advice"
+- "Clinical correlation is recommended" ← only allowed if followed by WHAT to correlate with
+
+REQUIRED recommendation format:
+[Specific action] because [clinical reason from findings] [timeframe if relevant]. [Rx]
+
+GOOD recommendation examples:
+- "Lateral chest X-ray recommended to confirm right middle lobe infiltrate suggested by CNN findings. [Rx]"
+- "Compare with prior chest films from [date] to assess interval change in cardiac silhouette size. [Rx]"
+- "ECG and echocardiogram indicated given borderline cardiothoracic ratio noted on imaging. [Rx]"
+- "Repeat PA chest X-ray in 48 hours if respiratory symptoms persist. [Rx]"
+
+========================================
+CONFIDENCE INDICATOR (ADD TO CLINICAL IMPRESSION):
+========================================
+End your Clinical Impression sentence with ONE of:
+- [HIGH CONFIDENCE — supported by text report]
+- [MODERATE CONFIDENCE — partial text support, supplemented by imaging]  
+- [LOW CONFIDENCE — imaging/CNN only, no text report support]
+
+{"NOTE: Text report evidence IS available — base your impression on it." if has_text_reports else "WARNING: Text report evidence is LIMITED or absent — rely on imaging with low confidence."}
+
+========================================
 Retrieved Clinical Evidence:
+========================================
 {chr(10).join(combined_evidence)}
 
+========================================
 Clinical Question:
+========================================
 {query}
 
 ========================================
-RESPONSE FORMAT (YOU MUST FOLLOW THIS):
+RESPONSE FORMAT — FOLLOW THIS EXACTLY:
 ========================================
 
-Diagnosis / Impression:
-[Write ONE concise sentence with citation, e.g., "- No acute abnormality detected. [R1]"]
+Clinical Impression:
+[One concise sentence answering the clinical question directly: 
+ Is active disease / the queried pathology PRESENT, ABSENT, or INDETERMINATE on imaging?
+ Do NOT restate symptoms from the query. State the RADIOLOGICAL conclusion.
+ End with confidence indicator.]
 
-Supporting Evidence:
-[Write 2-4 bullet points with citations, e.g.:
-- Finding 1 description. [R1]
-- Finding 2 description. [R2]]
+Evidence Synthesis:
+- [Unique observation from text report]. [R1]
+- [Unique observation from imaging]. [R1-IMAGE]
+- [Discordance Note if applicable]. [R1, R1-IMAGE]
 
-Next Steps / Recommendations:
-[Write 1-2 bullet points with citations or [Rx], e.g.:
-- Clinical correlation recommended. [Rx]
-- Follow-up imaging if symptoms persist. [Rx]]
+Differential Considerations:
+- Primary: [Most likely diagnosis based on evidence and why]. [R1]
+- Alternative: [What else it could be and why evidence points away from it]. [Rx or R1 — only cite evidence that EXISTS]
 
 ========================================
-NOW RESPOND IN THE EXACT FORMAT ABOVE:
+NOW RESPOND IN THE EXACT FORMAT ABOVE. DO NOT ADD ANY OTHER SECTIONS.
 ========================================
 """
 
@@ -177,17 +255,17 @@ NOW RESPOND IN THE EXACT FORMAT ABOVE:
     raw_answer   = response.json()["choices"][0]["message"]["content"]
     final_answer = enforce_structure(raw_answer)
 
+
+    print("=======FINAL ANSWER=========")
+    print(final_answer)
+    print("============================")
+
     # ─────────────────────────────────────────────────────────────────────────
     # METRICS
     # ─────────────────────────────────────────────────────────────────────────
 
     metrics = {}
 
-    # Query-based retrieval metrics.
-    # precision_recall_mrr scores each evidence unit (indication / comparison /
-    # findings / image) by cosine similarity to the query.  A unit is "relevant"
-    # if its similarity >= text_threshold (text) or image_threshold (image).
-    # See diagnosis_evaluator.py for formula details and research-paper caveats.
     metrics.update(
         precision_recall_mrr(
             retrieved_docs=evidence,

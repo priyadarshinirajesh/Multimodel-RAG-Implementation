@@ -270,7 +270,7 @@ body{font-family:var(--font);background:var(--bg);color:var(--text-dark);font-si
       <div class="lookup-icon">👤</div>
       <div class="lookup-title">Patient Lookup</div>
       <div class="lookup-sub">Enter the patient ID to begin analysis</div>
-      <input class="lookup-input" id="patient-id-input" type="text" value="P-1001" placeholder="e.g. P-1001" autocomplete="off" spellcheck="false"/>
+      <input class="lookup-input" id="patient-id-input" type="text" value="1" placeholder="e.g. 1" autocomplete="off" spellcheck="false"/>
       <button class="btn-primary" onclick="goToQuery()">Continue &nbsp;→</button>
       <div class="lookup-demo">Demo IDs: P-1001 · P-1002 · P-1003</div>
     </div>
@@ -614,48 +614,94 @@ function exp(title,openByDefault,inner){
 function toggleExp(id){document.getElementById(id).classList.toggle('open');}
 
 function parseSections(text){
-  const s={diagnosis:'',evidence:'',recommendations:''};
+  const s={impression:'',evidence:'',differential:'',recommendations:''};
   let cur=null;
   for(const line of text.split('\n')){
     const ll=line.toLowerCase().trim();
-    if(ll.includes('diagnosis')||ll.includes('impression')){cur='diagnosis';continue;}
-    if(ll.includes('supporting evidence')||ll==='evidence:'){cur='evidence';continue;}
-    if(ll.includes('next steps')||ll.includes('recommendation')){cur='recommendations';continue;}
-    if(cur&&line.trim()) s[cur]+=line+'\n';
+    // Detect section headers
+    if(ll.startsWith('clinical impression')){cur='impression';continue;}
+    if(ll.startsWith('evidence synthesis')){cur='evidence';continue;}
+    if(ll.startsWith('differential consideration')){cur='differential';continue;}
+    if(ll.startsWith('actionable next steps')){cur='recommendations';continue;}
+    // Capture content
+    if(cur && line.trim()) s[cur]+=line+'\n';
   }
   return s;
 }
 
 function renderClinical(secs,raw){
   let html='';
-  if(secs.diagnosis){
+
+  // ── 1. Clinical Impression ─────────────────────────────────────────────────
+  if(secs.impression){
     html+=`<div class="cr-section">
-      <div class="cr-heading">Diagnosis / Impression:</div>
+      <div class="cr-heading">🩺 Clinical Impression:</div>
       <div class="cr-box-blue">`;
-    secs.diagnosis.split('\n').filter(l=>l.trim()).forEach(l=>{
-      html+=`<div class="cr-bullet"><div class="cr-bullet-dot dot-blue"></div><span>${escHtml(l.replace(/^[-•*]\s*/,''))}</span></div>`;
+    secs.impression.split('\n').filter(l=>l.trim()).forEach(l=>{
+      const clean = escHtml(l.replace(/^[-•*]\s*/,''));
+      const ll = l.toLowerCase();
+      // Colour-code confidence badge
+      if(ll.includes('high confidence')){
+        html+=`<div class="cr-bullet"><div class="cr-bullet-dot" style="background:#10b981"></div><span style="color:#065f46;font-weight:500">${clean}</span></div>`;
+      } else if(ll.includes('moderate confidence')){
+        html+=`<div class="cr-bullet"><div class="cr-bullet-dot" style="background:#f59e0b"></div><span style="color:#92400e;font-weight:500">${clean}</span></div>`;
+      } else if(ll.includes('low confidence')){
+        html+=`<div class="cr-bullet"><div class="cr-bullet-dot" style="background:#ef4444"></div><span style="color:#991b1b;font-weight:500">${clean}</span></div>`;
+      } else {
+        html+=`<div class="cr-bullet"><div class="cr-bullet-dot dot-blue"></div><span>${clean}</span></div>`;
+      }
     });
     html+=`</div></div>`;
   }
+
+  // ── 2. Evidence Synthesis ──────────────────────────────────────────────────
   if(secs.evidence){
-    html+=`<div class="cr-section"><div class="cr-heading">Supporting Evidence:</div>`;
+    html+=`<div class="cr-section"><div class="cr-heading">🔍 Evidence Synthesis:</div>`;
     secs.evidence.split('\n').filter(l=>l.trim()).forEach(l=>{
-      html+=`<div class="cr-bullet"><div class="cr-bullet-dot dot-green"></div><span>${escHtml(l.replace(/^[-•*]\s*/,''))}</span></div>`;
+      const clean = escHtml(l.replace(/^[-•*]\s*/,''));
+      if(l.toLowerCase().includes('discordance')){
+        // Highlight discordance notes in amber
+        html+=`<div style="background:#fffbeb;border-left:4px solid #f59e0b;padding:8px 14px;border-radius:0 6px 6px 0;margin:5px 0;font-size:.85rem;">
+          <span style="font-weight:600;color:#92400e">⚠️ ${clean}</span>
+        </div>`;
+      } else {
+        html+=`<div class="cr-bullet"><div class="cr-bullet-dot dot-green"></div><span>${clean}</span></div>`;
+      }
     });
     html+=`</div>`;
   }
-  if(secs.recommendations){
-    html+=`<div class="cr-section"><div class="cr-heading">Next Steps / Recommendations:</div>`;
-    let n=1;
-    secs.recommendations.split('\n').filter(l=>l.trim()).forEach(l=>{
-      html+=`<div class="cr-numbered-item"><div class="cr-num">${n++}</div><span>${escHtml(l.replace(/^\d+[\.\)]\s*/,'').replace(/^[-•*]\s*/,''))}</span></div>`;
+
+  // ── 3. Differential Considerations ────────────────────────────────────────
+  if(secs.differential){
+    html+=`<div class="cr-section"><div class="cr-heading">🔀 Differential Considerations:</div>`;
+    secs.differential.split('\n').filter(l=>l.trim()).forEach(l=>{
+      const clean = escHtml(l.replace(/^[-•*]\s*/,''));
+      const ll = l.toLowerCase();
+      if(ll.includes('primary:')){
+        html+=`<div style="background:#ecfdf5;border-left:4px solid #10b981;padding:8px 14px;border-radius:0 6px 6px 0;margin:5px 0;font-size:.85rem;">
+          <span style="color:#065f46">✅ ${clean}</span>
+        </div>`;
+      } else if(ll.includes('alternative:')){
+        html+=`<div style="background:#f3f4f6;border-left:4px solid #6b7280;padding:8px 14px;border-radius:0 6px 6px 0;margin:5px 0;font-size:.85rem;">
+          <span style="color:#374151">🔄 ${clean}</span>
+        </div>`;
+      } else {
+        html+=`<div class="cr-bullet"><div class="cr-bullet-dot dot-blue"></div><span>${clean}</span></div>`;
+      }
     });
     html+=`</div>`;
   }
-  if(!secs.diagnosis&&!secs.evidence&&!secs.recommendations&&raw){
+
+  // ── 4. Actionable Next Steps — HIDDEN from display as requested ────────────
+  // secs.recommendations is parsed but intentionally not rendered in the UI.
+  // It is still available in the raw final_answer for exports.
+
+  // ── Fallback if nothing parsed ─────────────────────────────────────────────
+  if(!secs.impression && !secs.evidence && !secs.differential && raw){
     html+=`<div class="cr-fallback">${escHtml(raw).replace(/\n/g,'<br/>')}</div>`;
   }
-  return html||`<div class="banner warn">No clinical response generated.</div>`;
+
+  return html || `<div class="banner warn">No clinical response generated.</div>`;
 }
 
 function buildPathData(ev){

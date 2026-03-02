@@ -1,10 +1,17 @@
 # agents/verifiers/structure_repair.py
 
+
 def enforce_structure(text: str) -> str:
+    """
+    Enforce the four-section clinical response format.
+    Parses LLM output and maps it to the correct sections.
+    Provides safe fallback content for any missing section.
+    """
+
     sections = {
-        "Diagnosis / Impression": "",
-        "Supporting Evidence": "",
-        "Next Steps / Recommendations": ""
+        "Clinical Impression": "",
+        "Evidence Synthesis": "",
+        "Differential Considerations": "",
     }
 
     current_section = None
@@ -12,52 +19,63 @@ def enforce_structure(text: str) -> str:
 
     for line in lines:
         lower = line.lower().strip()
-        
+
         # Skip empty lines
         if not lower:
             continue
 
-        # ✅ FIXED: Explicit section header detection
-        if "diagnosis" in lower and "impression" in lower:
-            current_section = "Diagnosis / Impression"
+        # ── Section header detection ──────────────────────────────────────────
+        if "clinical impression" in lower:
+            current_section = "Clinical Impression"
             continue
-        elif ("diagnosis" in lower or "impression" in lower) and ":" in line:
-            current_section = "Diagnosis / Impression"
+        elif "evidence synthesis" in lower:
+            current_section = "Evidence Synthesis"
             continue
-        elif "supporting evidence" in lower or "evidence:" in lower:
-            current_section = "Supporting Evidence"
+        elif "differential consideration" in lower:
+            current_section = "Differential Considerations"
             continue
-        elif "next steps" in lower or "recommendation" in lower:
-            current_section = "Next Steps / Recommendations"
+
+        # ── Legacy section header support (in case LLM uses old names) ───────
+        elif ("diagnosis" in lower and "impression" in lower) or \
+             ("diagnosis" in lower and ":" in line):
+            current_section = "Clinical Impression"
             continue
-        
-        # ✅ Capture content only if we're in a section
+        elif "supporting evidence" in lower or lower == "evidence:":
+            current_section = "Evidence Synthesis"
+            continue
+
+
+        # ── Capture content if we are inside a section ────────────────────────
         if current_section:
             sections[current_section] += line + "\n"
 
-    # 🔒 Force minimum content (with proper structure)
-    if not sections["Diagnosis / Impression"].strip():
-        sections["Diagnosis / Impression"] = (
-            "- No definitive abnormality identified based on available evidence. [R1]"
+    # ── Force minimum content for each section ────────────────────────────────
+    if not sections["Clinical Impression"].strip():
+        sections["Clinical Impression"] = (
+            "- Insufficient evidence to determine finding with confidence. [R1] "
+            "[LOW CONFIDENCE — imaging/CNN only, no text report support]"
         )
 
-    if not sections["Supporting Evidence"].strip():
-        sections["Supporting Evidence"] = (
+    if not sections["Evidence Synthesis"].strip():
+        sections["Evidence Synthesis"] = (
             "- Imaging findings do not demonstrate acute pathology. [R1]"
         )
 
-    if not sections["Next Steps / Recommendations"].strip():
-        sections["Next Steps / Recommendations"] = (
-            "- Clinical correlation is recommended. [R1]"
+    if not sections["Differential Considerations"].strip():
+        sections["Differential Considerations"] = (
+            "- Primary: No acute abnormality identified based on available evidence. [R1]\n"
+            "- Alternative: Insufficient evidence to exclude other diagnoses without additional imaging. [Rx]"
         )
 
-    # ✅ Return with PROPER formatting
-    return f"""Diagnosis / Impression:
-{sections["Diagnosis / Impression"].strip()}
 
-Supporting Evidence:
-{sections["Supporting Evidence"].strip()}
+    # ── Return with proper formatting ─────────────────────────────────────────
+    return f"""Clinical Impression:
+{sections["Clinical Impression"].strip()}
 
-Next Steps / Recommendations:
-{sections["Next Steps / Recommendations"].strip()}
+Evidence Synthesis:
+{sections["Evidence Synthesis"].strip()}
+
+Differential Considerations:
+{sections["Differential Considerations"].strip()}
+
 """.strip()
