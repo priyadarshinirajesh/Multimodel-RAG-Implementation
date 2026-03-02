@@ -118,6 +118,7 @@ body{font-family:var(--font);background:var(--bg);color:var(--text-dark);font-si
 
 /* 3-col quality gates */
 .gate-cols-3{display:grid;grid-template-columns:repeat(3,1fr);gap:14px;margin-bottom:24px}
+.gate-cols-2{display:grid;grid-template-columns:repeat(2,1fr);gap:14px;margin-bottom:24px}
 .gate-col{display:flex;flex-direction:column;gap:6px}
 .gate-col-label{font-size:.7rem;color:var(--text-light);font-weight:500}
 .gate-col-val{font-size:2rem;font-weight:700;color:var(--text-dark);line-height:1}
@@ -205,9 +206,9 @@ body{font-family:var(--font);background:var(--bg);color:var(--text-dark);font-si
 .mt-blue{color:var(--blue-mid)}
 
 /* Export */
-.export-row{display:flex;gap:10px}
+/* .export-row{display:flex;gap:10px}
 .btn-export{flex:1;padding:11px 16px;background:var(--bg);border:1.5px solid var(--border);border-radius:var(--r-xs);color:var(--text-mid);font-family:var(--font);font-size:.8rem;font-weight:600;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:6px;transition:all .15s}
-.btn-export:hover{border-color:var(--blue-border);color:var(--blue-dark);background:var(--blue-light)}
+.btn-export:hover{border-color:var(--blue-border);color:var(--blue-dark);background:var(--blue-light)} */
 
 /* Action bar */
 .action-bar{display:flex;gap:10px;width:100%;margin-top:8px;animation:fadeUp .4s ease .1s both}
@@ -411,7 +412,7 @@ function renderResults(d){
   }
 
   /* ── 1. PIPELINE EXECUTION SUMMARY ── */
-  html+=`<div class="st-header">📊 Pipeline Execution Summary</div>`;
+  html+=`<div class="st-header">Pipeline Execution Summary</div>`;
   html+=`<div class="metric-row-4">
     ${tile('Total Iterations',iterations,'(includes refinements)')}
     ${tile('Retrieval Attempts',retrieval,'')}
@@ -420,15 +421,14 @@ function renderResults(d){
   </div>`;
 
   /* ── 2. QUALITY GATE RESULTS ── */
-  html+=`<div class="st-header">✅ Quality Gate Results</div>`;
-  html+=`<div class="gate-cols-3">
-    ${gateCol('Evidence Quality',eScore,evThresh)}
+  html+=`<div class="st-header">Quality Gate Results</div>`;
+  html+=`<div class="gate-cols-2">
     ${gateCol('Response Quality',rScore,rThresh)}
     ${overallCol('Overall Quality',aScore)}
   </div>`;
 
   /* ── 3. STAGE BREAKDOWN ── */
-  html+=`<div class="st-header">🔍 Stage-by-Stage Breakdown</div>`;
+  html+=`<div class="st-header">Stage-by-Stage Breakdown</div>`;
   const origCnt=(d.evidence||[]).length, filtCnt=ev.length, rmCnt=filterRes.removed_count||0;
   const qSc=filterRes.quality_score||0, gateDec=evidGate.decision||'N/A', feedback=filterRes.feedback||'';
 
@@ -456,11 +456,11 @@ function renderResults(d){
   `);
 
   /* ── 4. RETRIEVED EVIDENCE ── */
-  html+=`<div class="st-header">🗂️ Retrieved Evidence</div>`;
+  html+=`<div class="st-header">Retrieved Evidence</div>`;
   if(!ev.length){
     html+=`<div class="banner warn">⚠️ No relevant evidence found</div>`;
   } else {
-    html+=`<div class="banner success">✅ Found ${ev.length} relevant evidence items</div>`;
+    html+=`<div class="banner success">Found ${ev.length} relevant evidence items</div>`;
     const modCounts={};
     ev.forEach(e=>{const mod=e.modality||'Unknown';modCounts[mod]=(modCounts[mod]||0)+1;});
     html+=`<div class="mod-count-row">`;
@@ -493,7 +493,7 @@ function renderResults(d){
   }
 
   /* ── 5. PATHOLOGY DETECTION ── */
-  html+=`<div class="st-header">🔬 Pathology Detection Results</div>`;
+  html+=`<div class="st-header">Pathology Detection Results</div>`;
   const pathData=buildPathData(ev);
   const hasPath=pathData.length>0;
   if(hasPath){
@@ -529,12 +529,12 @@ function renderResults(d){
   }
 
   /* ── 6. FINAL CLINICAL RESPONSE ── */
-  html+=`<div class="st-header">💊 Final Clinical Response</div>`;
+  html+=`<div class="st-header">Final Clinical Response</div>`;
   const secs=parseSections(raw);
   html+=renderClinical(secs,raw);
 
   /* ── 7. EVALUATION METRICS ── */
-  html+=`<div class="st-header">📈 Evaluation Metrics</div>`;
+  html+=`<div class="st-header"> Evaluation Metrics</div>`;
   const hidden=new Set(['GroundednessSimple','EvaluationNote','GroundednessSource']);
   const pref=['Precision@K','Recall@K','MRR','Groundedness','ClinicalCorrectness','Completeness'];
   const vis=pref.filter(k=>k in m&&!hidden.has(k));
@@ -550,12 +550,12 @@ function renderResults(d){
     html+=`<div class="banner warn">⚠️ No evaluation metrics available</div>`;
   }
 
-  /* ── 8. EXPORT ── */
-  html+=`<div class="st-header">⬇️ Export Results</div>`;
-  html+=`<div class="export-row">
-    <button class="btn-export" onclick="exportTxt()">⬇ Download as Text</button>
-    <button class="btn-export" onclick="exportJson()">⬇ Download as JSON</button>
-  </div>`;
+  // /* ── 8. EXPORT ── */
+  // html+=`<div class="st-header"> Export Results</div>`;
+  // html+=`<div class="export-row">
+  //   <button class="btn-export" onclick="exportTxt()">⬇ Download as Text</button>
+  //   <button class="btn-export" onclick="exportJson()">⬇ Download as JSON</button>
+  // </div>`;
 
   document.getElementById('results-card').innerHTML=html;
 
@@ -575,16 +575,27 @@ function tile(label,val,hint){
   </div>`;
 }
 
+// function gateCol(label,score,threshold){
+//   const pass=score>=threshold, marg=!pass&&score>=threshold*.8;
+//   const cls=pass?'gb-pass':marg?'gb-warn':'gb-fail';
+//   const txt=pass?'PASS':marg?'MARGINAL':'FAIL';
+//   const delta=(score-threshold).toFixed(2);
+//   const dCls=parseFloat(delta)>=0?'d-pos':'d-neg';
+//   return `<div class="gate-col">
+//     <div class="gate-col-label">${label}</div>
+//     <div class="gate-col-val">${score.toFixed(2)}</div>
+//     <span class="metric-tile-delta ${dCls}">${parseFloat(delta)>=0?'↑':'↓'} ${delta}</span>
+//     <div class="gate-badge-large ${cls}">${txt}</div>
+//   </div>`;
+// }
+
 function gateCol(label,score,threshold){
   const pass=score>=threshold, marg=!pass&&score>=threshold*.8;
   const cls=pass?'gb-pass':marg?'gb-warn':'gb-fail';
   const txt=pass?'PASS':marg?'MARGINAL':'FAIL';
-  const delta=(score-threshold).toFixed(2);
-  const dCls=parseFloat(delta)>=0?'d-pos':'d-neg';
   return `<div class="gate-col">
     <div class="gate-col-label">${label}</div>
     <div class="gate-col-val">${score.toFixed(2)}</div>
-    <span class="metric-tile-delta ${dCls}">${parseFloat(delta)>=0?'↑':'↓'} ${delta}</span>
     <div class="gate-badge-large ${cls}">${txt}</div>
   </div>`;
 }
@@ -635,7 +646,7 @@ function renderClinical(secs,raw){
   // ── 1. Clinical Impression ─────────────────────────────────────────────────
   if(secs.impression){
     html+=`<div class="cr-section">
-      <div class="cr-heading">🩺 Clinical Impression:</div>
+      <div class="cr-heading"> Clinical Impression:</div>
       <div class="cr-box-blue">`;
     secs.impression.split('\n').filter(l=>l.trim()).forEach(l=>{
       const clean = escHtml(l.replace(/^[-•*]\s*/,''));
@@ -656,7 +667,7 @@ function renderClinical(secs,raw){
 
   // ── 2. Evidence Synthesis ──────────────────────────────────────────────────
   if(secs.evidence){
-    html+=`<div class="cr-section"><div class="cr-heading">🔍 Evidence Synthesis:</div>`;
+    html+=`<div class="cr-section"><div class="cr-heading">Evidence Synthesis:</div>`;
     secs.evidence.split('\n').filter(l=>l.trim()).forEach(l=>{
       const clean = escHtml(l.replace(/^[-•*]\s*/,''));
       if(l.toLowerCase().includes('discordance')){
@@ -673,17 +684,17 @@ function renderClinical(secs,raw){
 
   // ── 3. Differential Considerations ────────────────────────────────────────
   if(secs.differential){
-    html+=`<div class="cr-section"><div class="cr-heading">🔀 Differential Considerations:</div>`;
+    html+=`<div class="cr-section"><div class="cr-heading">Differential Considerations:</div>`;
     secs.differential.split('\n').filter(l=>l.trim()).forEach(l=>{
       const clean = escHtml(l.replace(/^[-•*]\s*/,''));
       const ll = l.toLowerCase();
       if(ll.includes('primary:')){
         html+=`<div style="background:#ecfdf5;border-left:4px solid #10b981;padding:8px 14px;border-radius:0 6px 6px 0;margin:5px 0;font-size:.85rem;">
-          <span style="color:#065f46">✅ ${clean}</span>
+          <span style="color:#065f46"> ${clean}</span>
         </div>`;
       } else if(ll.includes('alternative:')){
         html+=`<div style="background:#f3f4f6;border-left:4px solid #6b7280;padding:8px 14px;border-radius:0 6px 6px 0;margin:5px 0;font-size:.85rem;">
-          <span style="color:#374151">🔄 ${clean}</span>
+          <span style="color:#374151"> ${clean}</span>
         </div>`;
       } else {
         html+=`<div class="cr-bullet"><div class="cr-bullet-dot dot-blue"></div><span>${clean}</span></div>`;
@@ -732,31 +743,31 @@ function renderPathChart(data){
 }
 
 /* ─── EXPORT ─── */
-function exportTxt(){
-  if(!_lastData) return;
-  const d=_lastData, qs=d.quality_scores||{};
-  const hidden=new Set(['GroundednessSimple','EvaluationNote','GroundednessSource']);
-  const metLines=Object.entries(d.metrics||{}).filter(([k])=>!hidden.has(k)).map(([k,v])=>`${k}: ${v}`).join('\n');
-  const txt=`MEDICAL MULTI AGENT AI CLINICAL ANALYSIS REPORT\n${'='.repeat(60)}\nPatient ID : ${currentPatient}\nQuery      : ${currentQuery}\n\nPIPELINE SUMMARY\n${'-'.repeat(60)}\nTotal Iterations   : ${d.total_iterations||0}\nRetrieval Attempts : ${d.retrieval_attempts||0}\nReasoning Attempts : ${d.reasoning_attempts||0}\nRefinement Count   : ${d.refinement_count||0}\nForce-Finalised    : ${d.forced_complete||false}\n\nQUALITY SCORES\n${'-'.repeat(60)}\nEvidence Quality: ${(qs.evidence||0).toFixed(3)}\nResponse Quality: ${(qs.response||0).toFixed(3)}\n\nCLINICAL RESPONSE\n${'-'.repeat(60)}\n${d.final_answer||''}\n\nEVALUATION METRICS\n${'-'.repeat(60)}\n${metLines}\n`;
-  dl(`medai_${currentPatient}.txt`,txt,'text/plain');
-}
+// function exportTxt(){
+//   if(!_lastData) return;
+//   const d=_lastData, qs=d.quality_scores||{};
+//   const hidden=new Set(['GroundednessSimple','EvaluationNote','GroundednessSource']);
+//   const metLines=Object.entries(d.metrics||{}).filter(([k])=>!hidden.has(k)).map(([k,v])=>`${k}: ${v}`).join('\n');
+//   const txt=`MEDICAL MULTI AGENT AI CLINICAL ANALYSIS REPORT\n${'='.repeat(60)}\nPatient ID : ${currentPatient}\nQuery      : ${currentQuery}\n\nPIPELINE SUMMARY\n${'-'.repeat(60)}\nTotal Iterations   : ${d.total_iterations||0}\nRetrieval Attempts : ${d.retrieval_attempts||0}\nReasoning Attempts : ${d.reasoning_attempts||0}\nRefinement Count   : ${d.refinement_count||0}\nForce-Finalised    : ${d.forced_complete||false}\n\nQUALITY SCORES\n${'-'.repeat(60)}\nEvidence Quality: ${(qs.evidence||0).toFixed(3)}\nResponse Quality: ${(qs.response||0).toFixed(3)}\n\nCLINICAL RESPONSE\n${'-'.repeat(60)}\n${d.final_answer||''}\n\nEVALUATION METRICS\n${'-'.repeat(60)}\n${metLines}\n`;
+//   dl(`medai_${currentPatient}.txt`,txt,'text/plain');
+// }
 
-function exportJson(){
-  if(!_lastData) return;
-  const hidden=new Set(['GroundednessSimple','EvaluationNote','GroundednessSource']);
-  const out={patient_id:currentPatient,query:currentQuery,
-    pipeline:{total_iterations:_lastData.total_iterations||0,retrieval_attempts:_lastData.retrieval_attempts||0,reasoning_attempts:_lastData.reasoning_attempts||0,refinement_count:_lastData.refinement_count||0,forced_complete:_lastData.forced_complete||false},
-    quality_scores:_lastData.quality_scores||{},final_answer:_lastData.final_answer||'',
-    metrics:Object.fromEntries(Object.entries(_lastData.metrics||{}).filter(([k])=>!hidden.has(k))),
-    evidence_count:(_lastData.filtered_evidence||[]).length};
-  dl(`medai_${currentPatient}.json`,JSON.stringify(out,null,2),'application/json');
-}
+// function exportJson(){
+//   if(!_lastData) return;
+//   const hidden=new Set(['GroundednessSimple','EvaluationNote','GroundednessSource']);
+//   const out={patient_id:currentPatient,query:currentQuery,
+//     pipeline:{total_iterations:_lastData.total_iterations||0,retrieval_attempts:_lastData.retrieval_attempts||0,reasoning_attempts:_lastData.reasoning_attempts||0,refinement_count:_lastData.refinement_count||0,forced_complete:_lastData.forced_complete||false},
+//     quality_scores:_lastData.quality_scores||{},final_answer:_lastData.final_answer||'',
+//     metrics:Object.fromEntries(Object.entries(_lastData.metrics||{}).filter(([k])=>!hidden.has(k))),
+//     evidence_count:(_lastData.filtered_evidence||[]).length};
+//   dl(`medai_${currentPatient}.json`,JSON.stringify(out,null,2),'application/json');
+// }
 
-function dl(name,content,mime){
-  const a=document.createElement('a');
-  const u=URL.createObjectURL(new Blob([content],{type:mime}));
-  a.href=u;a.download=name;a.click();URL.revokeObjectURL(u);
-}
+// function dl(name,content,mime){
+//   const a=document.createElement('a');
+//   const u=URL.createObjectURL(new Blob([content],{type:mime}));
+//   a.href=u;a.download=name;a.click();URL.revokeObjectURL(u);
+// }
 
 /* ─── DEMO DATA ─── */
 function getDemoData(query,pid){
