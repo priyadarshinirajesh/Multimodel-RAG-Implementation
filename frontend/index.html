@@ -24,7 +24,6 @@
   --shadow-sm:0 1px 3px rgba(15,41,56,.08);
   --shadow-md:0 4px 12px rgba(15,41,56,.12);
   --shadow-lg:0 12px 32px rgba(15,41,56,.16);
-  --shadow-xl:0 20px 48px rgba(15,41,56,.2);
   --r:12px; --r-sm:8px; --r-xs:6px;
   --font:'Inter',system-ui,sans-serif;
 }
@@ -34,105 +33,70 @@ body{font-family:var(--font);background:var(--bg);color:var(--text-dark);font-si
 ::selection{background:#c5dff0}
 ::-webkit-scrollbar{width:5px}
 ::-webkit-scrollbar-track{background:var(--bg)}
-::-webkit-scrollbar-thumb{background:var(--blue-border);border-radius:3px}
-
-/* NAVBAR */
-.navbar{background:var(--primary);border-bottom:none;height:64px;display:flex;align-items:center;padding:0 32px;position:sticky;top:0;z-index:100;box-shadow:var(--shadow-md)}
+::-webkit-scrollbar-thumb{background:#b3d9e6;border-radius:3px}
+.navbar{background:var(--primary);height:64px;display:flex;align-items:center;padding:0 32px;position:sticky;top:0;z-index:100;box-shadow:var(--shadow-md)}
 .nav-brand{display:flex;align-items:center;gap:14px}
-.nav-logo{width:40px;height:40px;background:var(--white);border-radius:10px;display:flex;align-items:center;justify-content:center;font-size:20px;box-shadow:0 4px 12px rgba(0,0,0,.15);font-weight:700;color:var(--primary)}
+.nav-logo{width:40px;height:40px;background:var(--white);border-radius:10px;display:flex;align-items:center;justify-content:center;font-size:20px;font-weight:700;color:var(--primary)}
 .nav-name{font-size:1.05rem;font-weight:700;color:var(--white);letter-spacing:-.01em}
 .nav-right{margin-left:auto;display:flex;align-items:center;gap:10px;font-size:.8rem;color:#d4e8f3}
-.status-dot{width:8px;height:8px;border-radius:50%;background:#2ecc71;box-shadow:0 0 8px #2ecc71,inset 0 0 4px rgba(255,255,255,.4);animation:blink 2.5s ease infinite}
+.status-dot{width:8px;height:8px;border-radius:50%;background:#2ecc71;box-shadow:0 0 8px #2ecc71;animation:blink 2.5s ease infinite}
 @keyframes blink{0%,100%{opacity:1}50%{opacity:.5}}
-
-/* PAGE */
-.page{min-height:calc(100vh - 56px);display:flex;flex-direction:column;align-items:center;padding:0 20px 60px}
-
-/* SCREENS */
+.page{min-height:calc(100vh - 64px);display:flex;flex-direction:column;align-items:center;padding:0 20px 60px}
 .screen{display:none;width:100%}
 .screen.active{display:flex;flex-direction:column}
-
-/* SCREEN 1 */
 #screen-1{align-items:center;justify-content:center;min-height:calc(100vh - 64px);max-width:540px;margin:0 auto}
 .lookup-card{background:var(--white);border-radius:var(--r);padding:56px 48px 44px;width:100%;box-shadow:var(--shadow-lg);display:flex;flex-direction:column;align-items:center;text-align:center;animation:fadeUp .4s ease both;border:1px solid var(--primary-border)}
-.lookup-icon{width:80px;height:80px;background:linear-gradient(135deg,#e3f2fd 0%,#d4f5f0 100%);border-radius:16px;display:flex;align-items:center;justify-content:center;font-size:2.2rem;margin-bottom:24px;box-shadow:inset 0 1px 3px rgba(255,255,255,.5)}
-.lookup-title{font-size:1.6rem;font-weight:700;color:var(--primary);margin-bottom:8px;letter-spacing:-.02em}
+.lookup-icon{width:80px;height:80px;background:linear-gradient(135deg,#e3f2fd 0%,#d4f5f0 100%);border-radius:16px;display:flex;align-items:center;justify-content:center;font-size:2.2rem;margin-bottom:24px}
+.lookup-title{font-size:1.6rem;font-weight:700;color:var(--primary);margin-bottom:8px}
 .lookup-sub{font-size:.92rem;color:var(--text-mid);margin-bottom:32px;line-height:1.6}
 .lookup-input{width:100%;padding:14px 20px;font-size:1.02rem;font-family:var(--font);font-weight:500;color:var(--text-dark);background:var(--bg);border:1.5px solid var(--border);border-radius:var(--r-sm);outline:none;text-align:center;letter-spacing:.04em;transition:all .2s ease;margin-bottom:16px}
-.lookup-input:focus{border-color:var(--primary-light);box-shadow:0 0 0 3px rgba(13,90,122,.1),inset 0 1px 2px rgba(0,0,0,.05)}
-.lookup-demo{margin-top:16px;font-size:.76rem;color:var(--text-light)}
-
-/* SCREEN 2 */
+.lookup-input:focus{border-color:var(--primary-light);box-shadow:0 0 0 3px rgba(13,90,122,.1)}
 #screen-2{padding-top:36px;max-width:780px;margin:0 auto}
-
-/* SCREEN 3 — WIDE */
 #screen-3{padding-top:28px;max-width:1200px;margin:0 auto}
-
-/* TOP BAR */
 .top-bar{display:flex;align-items:center;justify-content:space-between;width:100%;margin-bottom:24px;animation:fadeUp .35s ease both}
 .btn-back{display:flex;align-items:center;gap:6px;background:none;border:none;color:var(--text-mid);font-family:var(--font);font-size:.88rem;font-weight:600;cursor:pointer;padding:8px 6px;border-radius:var(--r-xs);transition:all .2s ease}
 .btn-back:hover{color:var(--primary);background:var(--primary-subtle)}
-.patient-chip{display:flex;align-items:center;gap:8px;padding:6px 15px;background:var(--white);border:1.5px solid var(--border);border-radius:30px;font-size:.8rem;font-weight:600;color:var(--text-dark);box-shadow:var(--shadow-sm);transition:all .2s ease}
-.patient-chip:hover{border-color:var(--primary-light);box-shadow:var(--shadow-md)}
+.patient-chip{display:flex;align-items:center;gap:8px;padding:6px 15px;background:var(--white);border:1.5px solid var(--border);border-radius:30px;font-size:.8rem;font-weight:600;color:var(--text-dark);box-shadow:var(--shadow-sm)}
 .patient-chip-dot{width:9px;height:9px;border-radius:50%;background:var(--success);box-shadow:0 0 6px var(--success)}
-
-/* BUTTONS */
-.btn-primary{width:100%;padding:14px 28px;background:var(--primary-grad);border:none;border-radius:var(--r-sm);color:#fff;font-family:var(--font);font-size:.94rem;font-weight:600;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:8px;transition:all .2s ease;box-shadow:0 6px 20px rgba(13,90,122,.25);letter-spacing:.01em}
-.btn-primary:hover{transform:translateY(-2px);box-shadow:0 10px 30px rgba(13,90,122,.35),inset 0 1px 0 rgba(255,255,255,.2)}
-.btn-primary:active{transform:translateY(0);box-shadow:0 4px 12px rgba(13,90,122,.25)}
+.btn-primary{width:100%;padding:14px 28px;background:var(--primary-grad);border:none;border-radius:var(--r-sm);color:#fff;font-family:var(--font);font-size:.94rem;font-weight:600;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:8px;transition:all .2s ease;box-shadow:0 6px 20px rgba(13,90,122,.25)}
+.btn-primary:hover{transform:translateY(-2px);box-shadow:0 10px 30px rgba(13,90,122,.35)}
 .btn-primary:disabled{opacity:.5;cursor:not-allowed;transform:none}
 .btn-secondary{padding:12px 22px;background:var(--white);border:1.5px solid var(--border);border-radius:var(--r-sm);color:var(--text-mid);font-family:var(--font);font-size:.88rem;font-weight:600;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:7px;transition:all .2s ease;box-shadow:var(--shadow-sm)}
-.btn-secondary:hover{border-color:var(--primary-light);color:var(--primary);background:var(--primary-subtle);box-shadow:var(--shadow-md)}
-
-/* QUERY CARD */
+.btn-secondary:hover{border-color:var(--primary-light);color:var(--primary);background:var(--primary-subtle)}
 .query-card{background:var(--white);border-radius:var(--r);padding:30px 30px 28px;box-shadow:var(--shadow-md);width:100%;animation:fadeUp .4s ease .05s both;border:1px solid var(--border)}
-.card-title{display:flex;align-items:center;gap:10px;font-size:1.08rem;font-weight:700;color:var(--text-dark);margin-bottom:18px;letter-spacing:-.01em}
+.card-title{display:flex;align-items:center;gap:10px;font-size:1.08rem;font-weight:700;color:var(--text-dark);margin-bottom:18px}
 .query-textarea{width:100%;min-height:125px;padding:14px 16px;font-family:var(--font);font-size:.95rem;color:var(--text-dark);background:var(--bg);border:1.5px solid var(--border);border-radius:var(--r-sm);outline:none;resize:vertical;transition:all .2s ease;margin-bottom:16px;line-height:1.6}
-.query-textarea:focus{border-color:var(--primary-light);box-shadow:0 0 0 3px rgba(13,90,122,.1),inset 0 1px 2px rgba(0,0,0,.05)}
+.query-textarea:focus{border-color:var(--primary-light);box-shadow:0 0 0 3px rgba(13,90,122,.1)}
 .query-textarea::placeholder{color:var(--text-light)}
 .quick-chips{display:flex;flex-wrap:wrap;gap:8px;margin-bottom:18px}
 .quick-chip{padding:6px 14px;background:var(--white);border:1.5px solid var(--border);border-radius:30px;font-family:var(--font);font-size:.78rem;font-weight:500;color:var(--text-mid);cursor:pointer;transition:all .2s ease}
 .quick-chip:hover{border-color:var(--primary-light);color:var(--primary);background:var(--primary-subtle)}
 .query-footer{text-align:center;font-size:.74rem;color:var(--text-light);margin-top:14px;line-height:1.5}
-
-/* ===================================================
-   RESULTS LAYOUT — matches streamlit_app.py exactly
-=================================================== */
 #results-card{width:100%;animation:fadeUp .4s ease .05s both}
-
-/* Section header like st.header */
 .st-header{font-size:1.32rem;font-weight:700;color:var(--primary);margin:36px 0 16px;padding-bottom:12px;border-bottom:2.5px solid var(--primary);display:flex;align-items:center;gap:8px}
 .st-subheader{font-size:.98rem;font-weight:700;color:var(--text-dark);margin:20px 0 12px}
-
-/* Banners */
 .banner{display:flex;align-items:flex-start;gap:11px;padding:13px 16px;border-radius:var(--r-sm);font-size:.84rem;line-height:1.6;margin-bottom:12px;border:1.5px solid;font-weight:500}
 .banner.success{background:var(--success-bg);border-color:rgba(11,138,79,.3);color:var(--success-text)}
 .banner.warn{background:var(--warning-bg);border-color:rgba(201,127,31,.3);color:var(--warning-text)}
 .banner.info{background:var(--info-bg);border-color:rgba(13,90,122,.2);color:var(--primary)}
-.banner.error{background:var(--danger-bg);border-color:rgba(182,58,42,.3);color:var(--danger-text)}
-
-/* 4-col pipeline metrics */
 .metric-row-4{display:grid;grid-template-columns:repeat(4,1fr);gap:14px;margin-bottom:28px}
 .metric-tile{background:var(--white);border:1.5px solid var(--border);border-radius:var(--r-sm);padding:18px 20px;box-shadow:var(--shadow-sm);transition:all .2s ease}
-.metric-tile:hover{border-color:var(--primary-light);box-shadow:var(--shadow-md),inset 0 1px 2px rgba(255,255,255,.5)}
+.metric-tile:hover{border-color:var(--primary-light);box-shadow:var(--shadow-md)}
 .metric-tile-label{font-size:.72rem;color:var(--text-light);font-weight:600;margin-bottom:4px;text-transform:uppercase;letter-spacing:.5px}
 .metric-tile-val{font-size:2.3rem;font-weight:700;color:var(--primary);line-height:1;margin-bottom:5px}
-.metric-tile-delta{font-size:.7rem;font-weight:600;padding:3px 8px;border-radius:10px;display:inline-flex;align-items:center;gap:3px}
-.d-pos{background:var(--success-bg);color:var(--success)}
-.d-neg{background:var(--danger-bg);color:var(--danger)}
+.d-neg{background:var(--danger-bg);color:var(--danger);font-size:.7rem;font-weight:600;padding:3px 8px;border-radius:10px;display:inline-flex;align-items:center;gap:3px}
 
-/* 3-col quality gates */
-.gate-cols-3{display:grid;grid-template-columns:repeat(3,1fr);gap:16px;margin-bottom:28px}
+/* ── QUALITY GATE 2-col ── */
 .gate-cols-2{display:grid;grid-template-columns:repeat(2,1fr);gap:16px;margin-bottom:28px}
-.gate-col{display:flex;flex-direction:column;gap:8px}
+.gate-col{background:var(--white);border:1.5px solid var(--border);border-radius:var(--r-sm);padding:22px 24px;box-shadow:var(--shadow-sm);display:flex;flex-direction:column;gap:8px;transition:all .2s ease}
+.gate-col:hover{border-color:var(--primary-light);box-shadow:var(--shadow-md)}
 .gate-col-label{font-size:.72rem;color:var(--text-light);font-weight:600;text-transform:uppercase;letter-spacing:.5px}
 .gate-col-val{font-size:2.4rem;font-weight:700;color:var(--primary);line-height:1}
-.gate-badge-large{padding:12px 18px;border-radius:var(--r-xs);font-size:.86rem;font-weight:700;text-align:center;border:1.5px solid;letter-spacing:.04em;margin-top:6px;transition:all .2s ease}
+.gate-badge-large{padding:12px 18px;border-radius:var(--r-xs);font-size:.86rem;font-weight:700;text-align:center;border:1.5px solid;letter-spacing:.04em;margin-top:6px}
 .gb-pass{background:var(--success-bg);border-color:rgba(11,138,79,.3);color:var(--success-text)}
 .gb-warn{background:var(--warning-bg);border-color:rgba(201,127,31,.3);color:var(--warning-text)}
 .gb-fail{background:var(--danger-bg);border-color:rgba(182,58,42,.3);color:var(--danger-text)}
 
-/* Expanders */
 .exp-block{background:var(--white);border:1.5px solid var(--border);border-radius:var(--r-sm);margin-bottom:10px;box-shadow:var(--shadow-sm);overflow:hidden;transition:all .2s ease}
 .exp-block:hover{border-color:var(--primary-light);box-shadow:var(--shadow-md)}
 .exp-head{display:flex;align-items:center;justify-content:space-between;padding:14px 18px;cursor:pointer;user-select:none;transition:background .15s}
@@ -143,14 +107,10 @@ body{font-family:var(--font);background:var(--bg);color:var(--text-dark);font-si
 .exp-body{max-height:0;overflow:hidden;transition:max-height .35s cubic-bezier(.22,1,.36,1)}
 .exp-block.open .exp-body{max-height:6000px}
 .exp-content{padding:18px 20px 22px;border-top:1px solid var(--border)}
-
-/* Mini 3-col inside expander */
 .mini-3{display:grid;grid-template-columns:repeat(3,1fr);gap:14px;margin-bottom:16px}
 .mini-stat-label{font-size:.72rem;color:var(--text-light);font-weight:600;margin-bottom:3px;text-transform:uppercase;letter-spacing:.5px}
 .mini-stat-val{font-size:1.8rem;font-weight:700;color:var(--primary);line-height:1}
 .mini-stat-delta{font-size:.7rem;font-weight:600;padding:3px 8px;border-radius:10px;display:inline-block;margin-top:4px}
-
-/* Evidence 2-col: text left, image right */
 .ev-2col{display:grid;grid-template-columns:1fr 360px;gap:24px;align-items:start}
 .ev-label{font-size:.82rem;font-weight:700;color:var(--text-dark);margin-bottom:6px}
 .ev-body{font-size:.86rem;color:var(--text-mid);line-height:1.7;margin-bottom:12px}
@@ -160,35 +120,24 @@ body{font-family:var(--font);background:var(--bg);color:var(--text-dark);font-si
 .ev-img-wrap img{width:100%;border-radius:var(--r-xs);border:1.5px solid var(--border);object-fit:contain;max-height:320px;box-shadow:var(--shadow-sm)}
 .ev-img-caption{font-size:.72rem;color:var(--text-light);margin-top:6px}
 .ev-no-img{background:var(--bg);border:1.5px dashed var(--border);border-radius:var(--r-xs);padding:40px 24px;text-align:center;color:var(--text-light);font-size:.8rem}
-
-/* Badges */
 .rel-badge{font-size:.72rem;font-weight:700;padding:3px 10px;border-radius:4px;text-transform:uppercase;letter-spacing:.5px}
 .rel-high{background:var(--success-bg);color:var(--success-text)}
 .rel-medium{background:var(--warning-bg);color:var(--warning-text)}
 .rel-low{background:var(--danger-bg);color:var(--danger-text)}
-
-/* Modality count */
 .mod-count-row{display:flex;flex-wrap:wrap;gap:12px;margin-bottom:16px}
-.mod-count{background:var(--white);border:1.5px solid var(--border);border-radius:var(--r-xs);padding:10px 20px;text-align:center;box-shadow:var(--shadow-sm);transition:all .2s ease}
-.mod-count:hover{border-color:var(--primary-light);box-shadow:var(--shadow-md)}
+.mod-count{background:var(--white);border:1.5px solid var(--border);border-radius:var(--r-xs);padding:10px 20px;text-align:center;box-shadow:var(--shadow-sm)}
 .mod-count-val{font-size:1.7rem;font-weight:700;color:var(--primary)}
 .mod-count-label{font-size:.72rem;color:var(--text-light);font-weight:600;margin-top:2px}
-
-/* Chart */
 .chart-wrap{position:relative;height:340px;margin-bottom:16px;background:var(--white);border:1.5px solid var(--border);border-radius:var(--r-sm);padding:20px;box-shadow:var(--shadow-sm)}
 .path-legend{display:flex;gap:24px;margin-bottom:20px;flex-wrap:wrap}
 .path-legend-item{display:flex;align-items:center;gap:7px;font-size:.8rem;font-weight:600;color:var(--text-dark)}
 .leg-dot{width:11px;height:11px;border-radius:50%;flex-shrink:0}
-
-/* Pathology table */
 .path-table{width:100%;border-collapse:collapse;font-size:.84rem}
 .path-table th{text-align:left;padding:10px 14px;font-weight:700;color:var(--primary);font-size:.72rem;border-bottom:2px solid var(--border);background:var(--bg);text-transform:uppercase;letter-spacing:.5px}
 .path-table td{padding:10px 14px;border-bottom:1px solid var(--border);color:var(--text-mid)}
 .path-table tr:last-child td{border-bottom:none}
 .path-table tr:hover td{background:var(--bg)}
 .dot-indicator{width:10px;height:10px;border-radius:50%;display:inline-block;margin-right:6px}
-
-/* Clinical response */
 .cr-section{margin-bottom:20px}
 .cr-heading{font-size:.92rem;font-weight:700;color:var(--text-dark);margin-bottom:10px}
 .cr-box-blue{background:var(--info-bg);border:1.5px solid rgba(13,90,122,.15);border-radius:var(--r-xs);padding:14px 18px}
@@ -197,12 +146,7 @@ body{font-family:var(--font);background:var(--bg);color:var(--text-dark);font-si
 .cr-bullet-dot{width:8px;height:8px;border-radius:50%;flex-shrink:0;margin-top:5px}
 .dot-blue{background:var(--primary-light)}
 .dot-green{background:var(--success)}
-.dot-amber{background:var(--warning)}
-.cr-numbered-item{display:flex;align-items:flex-start;gap:11px;font-size:.87rem;color:var(--text-mid);line-height:1.7;margin-bottom:8px}
-.cr-num{min-width:24px;height:24px;border-radius:50%;background:var(--primary-subtle);color:var(--primary);font-size:.72rem;font-weight:700;display:flex;align-items:center;justify-content:center;flex-shrink:0;margin-top:1px}
 .cr-fallback{background:var(--bg);border-left:4px solid var(--primary);border-radius:0 var(--r-xs) var(--r-xs) 0;padding:18px 20px;font-size:.88rem;color:var(--text-mid);line-height:1.7}
-
-/* 6-col eval metrics */
 .metric-row-6{display:grid;grid-template-columns:repeat(6,1fr);gap:12px;margin-bottom:24px}
 .metric-tile-sm{background:var(--white);border:1.5px solid var(--border);border-radius:var(--r-xs);padding:14px 16px;text-align:center;transition:all .2s ease}
 .metric-tile-sm:hover{border-color:var(--primary-light);box-shadow:var(--shadow-sm)}
@@ -212,17 +156,8 @@ body{font-family:var(--font);background:var(--bg);color:var(--text-dark);font-si
 .mt-amber{color:var(--warning)}
 .mt-red{color:var(--danger)}
 .mt-blue{color:var(--primary)}
-
-/* Export */
-/* .export-row{display:flex;gap:10px}
-.btn-export{flex:1;padding:11px 16px;background:var(--bg);border:1.5px solid var(--border);border-radius:var(--r-xs);color:var(--text-mid);font-family:var(--font);font-size:.8rem;font-weight:600;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:6px;transition:all .15s}
-.btn-export:hover{border-color:var(--blue-border);color:var(--blue-dark);background:var(--blue-light)} */
-
-/* Action bar */
 .action-bar{display:flex;gap:12px;width:100%;margin-top:12px;animation:fadeUp .4s ease .1s both}
-.footer-note{text-align:center;font-size:.74rem;color:var(--text-light);margin-top:14px;animation:fadeUp .4s ease .15s both;line-height:1.5}
-
-/* Loading */
+.footer-note{text-align:center;font-size:.74rem;color:var(--text-light);margin-top:14px;line-height:1.5}
 .loading-state{background:var(--white);border-radius:var(--r);box-shadow:var(--shadow-lg);display:flex;flex-direction:column;align-items:center;padding:70px 24px;border:1px solid var(--border)}
 .spinner-wrap{position:relative;width:60px;height:60px;margin-bottom:24px}
 .spinner-bg{position:absolute;inset:0;border-radius:50%;border:3px solid var(--primary-subtle)}
@@ -236,44 +171,24 @@ body{font-family:var(--font);background:var(--bg);color:var(--text-dark);font-si
 .pipe-dot{width:9px;height:9px;border-radius:50%;background:var(--border);flex-shrink:0;transition:background .3s}
 .pipe-item.done .pipe-dot{background:var(--success)}
 .pipe-item.active .pipe-dot{background:var(--primary);box-shadow:0 0 0 4px rgba(13,90,122,.15);animation:blink 1s ease infinite}
-
-/* Query echo (at top of results) */
 .query-echo-card{background:var(--white);border-radius:var(--r);padding:22px 26px;box-shadow:var(--shadow-md);width:100%;margin-bottom:6px;border:1px solid var(--border)}
 .query-echo-label{font-size:.7rem;font-weight:700;text-transform:uppercase;letter-spacing:.06em;color:var(--text-light);margin-bottom:6px}
 .query-echo-text{font-size:1.04rem;font-weight:600;color:var(--text-dark);line-height:1.5}
-
 @keyframes fadeUp{from{opacity:0;transform:translateY(14px)}to{opacity:1;transform:translateY(0)}}
 @keyframes spin{to{transform:rotate(360deg)}}
-
-@media(max-width:900px){
-  .ev-2col{grid-template-columns:1fr}
-  .metric-row-6{grid-template-columns:repeat(3,1fr)}
-  .gate-cols-3{grid-template-columns:1fr}
-  .metric-row-4{grid-template-columns:repeat(2,1fr)}
-}
-@media(max-width:600px){
-  .page{padding:0 10px 48px}
-  .metric-row-6{grid-template-columns:repeat(2,1fr)}
-  .metric-row-4{grid-template-columns:repeat(2,1fr)}
-}
+@media(max-width:900px){.ev-2col{grid-template-columns:1fr}.metric-row-6{grid-template-columns:repeat(3,1fr)}.gate-cols-2{grid-template-columns:1fr}.metric-row-4{grid-template-columns:repeat(2,1fr)}}
+@media(max-width:600px){.page{padding:0 10px 48px}.metric-row-6{grid-template-columns:repeat(2,1fr)}.metric-row-4{grid-template-columns:repeat(2,1fr)}}
 </style>
 </head>
 <body>
-
 <nav class="navbar">
   <div class="nav-brand">
     <div class="nav-logo">🩺</div>
     <span class="nav-name">Multi-Agent RAG Framework for Clinical Decision Support</span>
   </div>
-  <div class="nav-right">
-    <div class="status-dot"></div>
-    System online
-  </div>
+  <div class="nav-right"><div class="status-dot"></div>System online</div>
 </nav>
-
 <div class="page">
-
-  <!-- SCREEN 1: Patient Lookup -->
   <div class="screen active" id="screen-1">
     <div class="lookup-card">
       <div class="lookup-icon">👤</div>
@@ -281,11 +196,8 @@ body{font-family:var(--font);background:var(--bg);color:var(--text-dark);font-si
       <div class="lookup-sub">Enter the patient ID to begin analysis</div>
       <input class="lookup-input" id="patient-id-input" type="text" value="1" placeholder="e.g. 1" autocomplete="off" spellcheck="false"/>
       <button class="btn-primary" onclick="goToQuery()">Continue &nbsp;→</button>
-      <!-- <div class="lookup-demo">Demo IDs: P-1001 · P-1002 · P-1003</div> -->
     </div>
   </div>
-
-  <!-- SCREEN 2: Query -->
   <div class="screen" id="screen-2">
     <div class="top-bar">
       <button class="btn-back" onclick="goBack(2)">← &nbsp;Change Patient</button>
@@ -306,8 +218,6 @@ body{font-family:var(--font);background:var(--bg);color:var(--text-dark);font-si
       <div class="query-footer">AI analysis is for clinical decision support only. Always verify with clinical judgment.</div>
     </div>
   </div>
-
-  <!-- SCREEN 3: Results -->
   <div class="screen" id="screen-3">
     <div class="top-bar">
       <button class="btn-back" onclick="goBack(3)">← &nbsp;Change Patient</button>
@@ -320,287 +230,110 @@ body{font-family:var(--font);background:var(--bg);color:var(--text-dark);font-si
     </div>
     <div class="footer-note">AI analysis is for clinical decision support only. Always verify with clinical judgment.</div>
   </div>
-
 </div>
-
 <script>
-/* ─── STATE ─── */
-let currentPatient='', currentQuery='', _lastData=null, _pathChart=null;
-
-/* ─── NAV ─── */
-function showScreen(n){
-  document.querySelectorAll('.screen').forEach(s=>s.classList.remove('active'));
-  document.getElementById('screen-'+n).classList.add('active');
-  document.getElementById('action-bar').style.display=(n===3)?'flex':'none';
-  if(n===3) window.scrollTo(0,0);
-}
-function goToQuery(){
-  const id=document.getElementById('patient-id-input').value.trim();
-  if(!id){document.getElementById('patient-id-input').focus();return;}
-  currentPatient=id;
-  document.getElementById('patient-chip-label').textContent=id;
-  document.getElementById('patient-chip-label-3').textContent=id;
-  showScreen(2);
-}
+let currentPatient='',currentQuery='',_lastData=null,_pathChart=null;
+function showScreen(n){document.querySelectorAll('.screen').forEach(s=>s.classList.remove('active'));document.getElementById('screen-'+n).classList.add('active');document.getElementById('action-bar').style.display=(n===3)?'flex':'none';if(n===3)window.scrollTo(0,0);}
+function goToQuery(){const id=document.getElementById('patient-id-input').value.trim();if(!id){document.getElementById('patient-id-input').focus();return;}currentPatient=id;document.getElementById('patient-chip-label').textContent=id;document.getElementById('patient-chip-label-3').textContent=id;showScreen(2);}
 function goBack(from){if(from===2)showScreen(1);if(from===3)showScreen(2);}
 function newQuery(){document.getElementById('query-input').value='';showScreen(2);}
 function setQuery(t){document.getElementById('query-input').value=t;document.getElementById('query-input').focus();}
-
 document.getElementById('patient-id-input').addEventListener('keydown',e=>{if(e.key==='Enter')goToQuery();});
 document.getElementById('query-input').addEventListener('keydown',e=>{if((e.ctrlKey||e.metaKey)&&e.key==='Enter')runAnalysis();});
-
-/* ─── RUN ─── */
 async function runAnalysis(){
   const q=document.getElementById('query-input').value.trim();
   if(!q){document.getElementById('query-input').focus();return;}
-  currentQuery=q;
-  document.getElementById('analyze-btn').disabled=true;
-  showScreen(3);
-  renderLoading();
-  await sleep(2800);
+  currentQuery=q;document.getElementById('analyze-btn').disabled=true;showScreen(3);renderLoading();await sleep(2800);
   let data;
-  try{
-    const res=await fetch('/api/analyze',{
-      method:'POST',headers:{'Content-Type':'application/json'},
-      body:JSON.stringify({patient_id:currentPatient,query:currentQuery,user_role:'doctor',
-        evidence_threshold:0.4,response_threshold:0.7,max_retrieval_retries:2,max_refinement_retries:2})
-    });
-    if(!res.ok) throw new Error('not_connected');
-    data=await res.json();
-  }catch{data=getDemoData(currentQuery,currentPatient);}
-  document.getElementById('analyze-btn').disabled=false;
-  _lastData=data;
-  renderResults(data);
+  try{const res=await fetch('/api/analyze',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({patient_id:currentPatient,query:currentQuery,user_role:'doctor',evidence_threshold:0.4,response_threshold:0.7,max_retrieval_retries:2,max_refinement_retries:2})});if(!res.ok)throw new Error();data=await res.json();}
+  catch{data=getDemoData(currentQuery,currentPatient);}
+  document.getElementById('analyze-btn').disabled=false;_lastData=data;renderResults(data);
 }
 function sleep(ms){return new Promise(r=>setTimeout(r,ms));}
-
-/* ─── LOADING ─── */
 function renderLoading(){
   const steps=['Connecting to clinical database','Retrieving patient records','Running multimodal evidence search','Evaluating evidence quality','Generating AI clinical reasoning','Finalising analysis'];
-  document.getElementById('results-card').innerHTML=`
-    <div class="loading-state">
-      <div class="spinner-wrap"><div class="spinner-bg"></div><div class="spinner"></div><div class="spinner-icon">🩺</div></div>
-      <div class="loading-title">Analysing clinical data…</div>
-      <div class="pipeline-list">
-        ${steps.map((s,i)=>`<div class="pipe-item" id="pipe-${i}"><div class="pipe-dot"></div>${s}</div>`).join('')}
-      </div>
-    </div>`;
-  steps.forEach((_,i)=>setTimeout(()=>{
-    const prev=document.getElementById('pipe-'+(i-1));
-    if(prev){prev.classList.remove('active');prev.classList.add('done');}
-    const el=document.getElementById('pipe-'+i);
-    if(el) el.classList.add('active');
-  },i*420));
+  document.getElementById('results-card').innerHTML=`<div class="loading-state"><div class="spinner-wrap"><div class="spinner-bg"></div><div class="spinner"></div><div class="spinner-icon">🩺</div></div><div class="loading-title">Analysing clinical data…</div><div class="pipeline-list">${steps.map((s,i)=>`<div class="pipe-item" id="pipe-${i}"><div class="pipe-dot"></div>${s}</div>`).join('')}</div></div>`;
+  steps.forEach((_,i)=>setTimeout(()=>{const prev=document.getElementById('pipe-'+(i-1));if(prev){prev.classList.remove('active');prev.classList.add('done');}const el=document.getElementById('pipe-'+i);if(el)el.classList.add('active');},i*420));
 }
-
-/* ─── RENDER RESULTS (mirrors streamlit_app.py) ─── */
 function renderResults(d){
   if(_pathChart){_pathChart.destroy();_pathChart=null;}
+  const qs=d.quality_scores||{},m=d.metrics||{},ev=d.filtered_evidence||[],raw=d.final_answer||'';
 
-  const qs=d.quality_scores||{}, m=d.metrics||{}, ev=d.filtered_evidence||[], raw=d.final_answer||'';
-  const eScore=qs.evidence||0, rScore=qs.response||0, aScore=(eScore+rScore)/2;
-  const iterations=d.total_iterations||0, retrieval=d.retrieval_attempts||0;
-  const reasoning=d.reasoning_attempts||0, refinements=d.refinement_count||0;
-  const filterRes=d.evidence_filter_result||{}, evidGate=d.evidence_gate_result||{};
-  const respGate=d.response_gate_result||{}, consistency=d.consistency_result||{};
-  const evThresh=0.4, rThresh=0.7;
+  /* Evidence and Response scores — shown separately in Quality Gate Results */
+  const eScore=qs.evidence||0;
+  const rScore=qs.response||0;
 
+  const evThresh=0.4,rThresh=0.7;
+  const iterations=d.total_iterations||0,retrieval=d.retrieval_attempts||0,reasoning=d.reasoning_attempts||0,refinements=d.refinement_count||0;
+  const filterRes=d.evidence_filter_result||{},evidGate=d.evidence_gate_result||{},respGate=d.response_gate_result||{},consistency=d.consistency_result||{};
   let html='';
-
-  /* Query echo */
-  html+=`<div class="query-echo-card">
-    <div class="query-echo-label">Your Query</div>
-    <div class="query-echo-text">${escHtml(currentQuery)}</div>
-  </div>`;
-
-  /* Success / forced warning */
+  html+=`<div class="query-echo-card"><div class="query-echo-label">Your Query</div><div class="query-echo-text">${escHtml(currentQuery)}</div></div>`;
   html+=`<div class="banner success">✅ Pipeline completed!</div>`;
-  if(d.forced_complete){
-    html+=`<div class="banner warn">⚠️ <b>Response was force-finalised:</b> reached maximum refinement retries before the response quality gate passed. Review manually or increase Max Refinement Retries.</div>`;
-  }
+  if(d.forced_complete)html+=`<div class="banner warn">⚠️ <b>Response was force-finalised:</b> reached maximum refinement retries before the response quality gate passed.</div>`;
 
-  /* ── 1. PIPELINE EXECUTION SUMMARY ── */
+  /* 1. Pipeline Summary */
   html+=`<div class="st-header">Pipeline Execution Summary</div>`;
-  html+=`<div class="metric-row-4">
-    ${tile('Total Iterations',iterations,'(includes refinements)')}
-    ${tile('Retrieval Attempts',retrieval,'')}
-    ${tile('Reasoning Attempts',reasoning,'')}
-    ${tile('Refinement Count',refinements,'')}
-  </div>`;
+  html+=`<div class="metric-row-4">${tile('Total Iterations',iterations,'(includes refinements)')}${tile('Retrieval Attempts',retrieval,'')}${tile('Reasoning Attempts',reasoning,'')}${tile('Refinement Count',refinements,'')}</div>`;
 
-  /* ── 2. QUALITY GATE RESULTS ── */
+  /* 2. Quality Gate Results — Evidence Quality + Response Quality */
   html+=`<div class="st-header">Quality Gate Results</div>`;
   html+=`<div class="gate-cols-2">
-    ${gateCol('Response Quality',rScore,rThresh)}
-    ${overallCol('Overall Quality',aScore)}
+    ${gateCol('Evidence Quality', eScore, evThresh)}
+    ${gateCol('Response Quality', rScore, rThresh)}
   </div>`;
 
-  /* ── 3. STAGE BREAKDOWN ── */
+  /* 3. Stage Breakdown */
   html+=`<div class="st-header">Stage-by-Stage Breakdown</div>`;
-  const origCnt=(d.evidence||[]).length, filtCnt=ev.length, rmCnt=filterRes.removed_count||0;
-  const qSc=filterRes.quality_score||0, gateDec=evidGate.decision||'N/A', feedback=filterRes.feedback||'';
+  const origCnt=(d.evidence||[]).length,filtCnt=ev.length,rmCnt=filterRes.removed_count||0,qSc=filterRes.quality_score||0,gateDec=evidGate.decision||'N/A',feedback=filterRes.feedback||'';
+  html+=exp('Stage 1: Evidence Retrieval',true,`<div class="mini-3"><div><div class="mini-stat-label">Original Evidence</div><div class="mini-stat-val">${origCnt}</div></div><div><div class="mini-stat-label">Filtered Evidence</div><div class="mini-stat-val">${filtCnt}</div></div><div><div class="mini-stat-label">Removed</div><div class="mini-stat-val">${rmCnt}</div><span class="mini-stat-delta d-neg">↓ -${rmCnt}</span></div></div><p style="font-size:.83rem;color:var(--text-mid);margin-bottom:4px">Quality Score: <b>${qSc.toFixed(2)}</b></p><p style="font-size:.83rem;color:var(--text-mid);margin-bottom:12px">Gate Decision: <b>${gateDec}</b></p>${feedback?`<div class="banner info">${escHtml(feedback)}</div>`:''}${consistency.passed===false?`<div class="banner warn">⚠️ Consistency issues: ${escHtml((consistency.issues||[]).join(', '))}</div>`:consistency.passed===true?`<div class="banner success">✅ Evidence consistency check passed</div>`:''}`);
+  const rSc2=respGate.score||0,rDec=respGate.decision||'N/A';
+  html+=exp('Stage 3: Clinical Reasoning',true,`<p style="font-size:.83rem;color:var(--text-mid);margin-bottom:4px">Score: <b>${rSc2.toFixed(2)}</b></p><p style="font-size:.83rem;color:var(--text-mid)">Decision: <b>${rDec}</b></p>`);
 
-  html+=exp('Stage 1: Evidence Retrieval',true,`
-    <div class="mini-3">
-      <div><div class="mini-stat-label">Original Evidence</div><div class="mini-stat-val">${origCnt}</div></div>
-      <div><div class="mini-stat-label">Filtered Evidence</div><div class="mini-stat-val">${filtCnt}</div></div>
-      <div><div class="mini-stat-label">Removed</div><div class="mini-stat-val">${rmCnt}</div>
-        <span class="mini-stat-delta d-neg">↓ -${rmCnt}</span></div>
-    </div>
-    <p style="font-size:.83rem;color:var(--text-mid);margin-bottom:4px">Quality Score: <b>${qSc.toFixed(2)}</b></p>
-    <p style="font-size:.83rem;color:var(--text-mid);margin-bottom:12px">Gate Decision: <b>${gateDec}</b></p>
-    ${feedback?`<div class="banner info">${escHtml(feedback)}</div>`:''}
-    ${consistency.passed===false
-      ?`<div class="banner warn">⚠️ Consistency issues: ${escHtml((consistency.issues||[]).join(', '))}</div>`
-      :consistency.passed===true
-        ?`<div class="banner success">✅ Evidence consistency check passed</div>`
-        :''}
-  `);
-
-  const rSc2=respGate.score||0, rDec=respGate.decision||'N/A';
-  html+=exp('Stage 3: Clinical Reasoning',true,`
-    <p style="font-size:.83rem;color:var(--text-mid);margin-bottom:4px">Score: <b>${rSc2.toFixed(2)}</b></p>
-    <p style="font-size:.83rem;color:var(--text-mid)">Decision: <b>${rDec}</b></p>
-  `);
-
-  /* ── 4. RETRIEVED EVIDENCE ── */
+  /* 4. Retrieved Evidence */
   html+=`<div class="st-header">Retrieved Evidence</div>`;
-  if(!ev.length){
-    html+=`<div class="banner warn">⚠️ No relevant evidence found</div>`;
-  } else {
+  if(!ev.length){html+=`<div class="banner warn">⚠️ No relevant evidence found</div>`;}
+  else{
     html+=`<div class="banner success">Found ${ev.length} relevant evidence items</div>`;
-    const modCounts={};
-    ev.forEach(e=>{const mod=e.modality||'Unknown';modCounts[mod]=(modCounts[mod]||0)+1;});
-    html+=`<div class="mod-count-row">`;
-    Object.entries(modCounts).forEach(([mod,cnt])=>{
-      html+=`<div class="mod-count"><div class="mod-count-val">${cnt}</div><div class="mod-count-label">${mod}</div></div>`;
-    });
-    html+=`</div><hr style="border:none;border-top:1px solid var(--border);margin:10px 0 14px"/>`;
-
-    ev.forEach((e,i)=>{
-      const rel=e.relevance_score||0;
-      const relCls=rel>=.6?'rel-high':rel>=.35?'rel-medium':'rel-low';
-      const relLbl=rel>=.6?'High':rel>=.35?'Medium':'Low';
-      const imgPath=e.image_path;
-      const inner=`
-        <div class="ev-2col">
-          <div>
-            <div class="ev-label">Report Text:</div>
-            <div class="ev-body">${escHtml(e.report_text||'No report text available.')}</div>
-            <div class="ev-meta"><b>Organ:</b> ${escHtml(e.organ||'N/A')}</div>
-            <div class="ev-meta"><b>Modality:</b> ${escHtml(e.modality||'N/A')}</div>
-          </div>
-          <div class="ev-img-wrap">
-            ${imgPath
-              ?`<img src="/api/image?path=${encodeURIComponent(imgPath)}" alt="Image ${i+1}" onerror="this.parentElement.innerHTML='<div class=ev-no-img>Unable to display image</div>'"/><div class="ev-img-caption">Image ${i+1}</div>`
-              :`<div class="ev-no-img">📷<br/>No image available</div>`}
-          </div>
-        </div>`;
-      html+=exp(`Evidence ${i+1} — ${e.modality||'N/A'} (Relevance: ${rel.toFixed(2)}) <span class="rel-badge ${relCls}">${relLbl}</span>`,true,inner);
-    });
+    const modCounts={};ev.forEach(e=>{const mod=e.modality||'Unknown';modCounts[mod]=(modCounts[mod]||0)+1;});
+    html+=`<div class="mod-count-row">`;Object.entries(modCounts).forEach(([mod,cnt])=>{html+=`<div class="mod-count"><div class="mod-count-val">${cnt}</div><div class="mod-count-label">${mod}</div></div>`;});html+=`</div><hr style="border:none;border-top:1px solid var(--border);margin:10px 0 14px"/>`;
+    ev.forEach((e,i)=>{const rel=e.relevance_score||0;const relCls=rel>=.6?'rel-high':rel>=.35?'rel-medium':'rel-low';const relLbl=rel>=.6?'High':rel>=.35?'Medium':'Low';const imgPath=e.image_path;const inner=`<div class="ev-2col"><div><div class="ev-label">Report Text:</div><div class="ev-body">${escHtml(e.report_text||'No report text available.')}</div><div class="ev-meta"><b>Organ:</b> ${escHtml(e.organ||'N/A')}</div><div class="ev-meta"><b>Modality:</b> ${escHtml(e.modality||'N/A')}</div></div><div class="ev-img-wrap">${imgPath?`<img src="/api/image?path=${encodeURIComponent(imgPath)}" alt="Image ${i+1}" onerror="this.parentElement.innerHTML='<div class=ev-no-img>Unable to display image</div>'"/><div class="ev-img-caption">Image ${i+1}</div>`:`<div class="ev-no-img">📷<br/>No image available</div>`}</div></div>`;html+=exp(`Evidence ${i+1} — ${e.modality||'N/A'} (Relevance: ${rel.toFixed(2)}) <span class="rel-badge ${relCls}">${relLbl}</span>`,true,inner);});
   }
 
-  /* ── 5. PATHOLOGY DETECTION ── */
+  /* 5. Pathology Detection */
   html+=`<div class="st-header">Pathology Detection Results</div>`;
-  const pathData=buildPathData(ev);
-  const hasPath=pathData.length>0;
+  const pathData=buildPathData(ev);const hasPath=pathData.length>0;
   if(hasPath){
     html+=`<div class="st-subheader">Detected Pathologies (Max Confidence Across All Images)</div>`;
     html+=`<div class="chart-wrap"><canvas id="pathChart"></canvas></div>`;
-    html+=`<div class="path-legend">
-      <div class="path-legend-item"><div class="leg-dot" style="background:#ef4444"></div><b>High Confidence</b>&nbsp;(≥70%)</div>
-      <div class="path-legend-item"><div class="leg-dot" style="background:#f59e0b"></div><b>Moderate Confidence</b>&nbsp;(40–70%)</div>
-      <div class="path-legend-item"><div class="leg-dot" style="background:#10b981"></div><b>Low Confidence</b>&nbsp;(&lt;40%)</div>
-    </div>`;
+    html+=`<div class="path-legend"><div class="path-legend-item"><div class="leg-dot" style="background:#ef4444"></div><b>High Confidence</b>&nbsp;(≥70%)</div><div class="path-legend-item"><div class="leg-dot" style="background:#f59e0b"></div><b>Moderate Confidence</b>&nbsp;(40–70%)</div><div class="path-legend-item"><div class="leg-dot" style="background:#10b981"></div><b>Low Confidence</b>&nbsp;(&lt;40%)</div></div>`;
     html+=`<div class="st-subheader">Detailed Findings by Image</div>`;
-    ev.forEach((e,i)=>{
-      if(!e.pathology_scores||!Object.keys(e.pathology_scores).length) return;
-      const sorted=Object.entries(e.pathology_scores).sort((a,b)=>b[1]-a[1]).filter(([,v])=>v>0.001).slice(0,12);
-      const inner=`
-        <p style="font-size:.82rem;color:var(--text-light);margin-bottom:10px">${escHtml(e.pathology_findings||'No significant pathologies detected above threshold.')}</p>
-        ${sorted.length?`
-        <table class="path-table">
-          <thead><tr><th>Pathology</th><th>Probability</th><th>Confidence</th></tr></thead>
-          <tbody>
-            ${sorted.map(([p,s])=>{
-              const pct=(s*100).toFixed(2)+'%';
-              const col=s>=.7?'#ef4444':s>=.5?'#f59e0b':'#10b981';
-              const lbl=s>=.7?'High':s>=.5?'Moderate':'Low';
-              return `<tr><td>${escHtml(p)}</td><td>${pct}</td><td><span class="dot-indicator" style="background:${col}"></span>${lbl}</td></tr>`;
-            }).join('')}
-          </tbody>
-        </table>`:'<p style="font-size:.82rem;color:var(--text-light)">All scores below 1% threshold</p>'}`;
-      html+=exp(`Evidence ${i+1} - Pathology Analysis`,true,inner);
-    });
-  } else {
-    html+=`<div class="banner info">ℹ️ No pathology detection data available for this query.</div>`;
-  }
+    ev.forEach((e,i)=>{if(!e.pathology_scores||!Object.keys(e.pathology_scores).length)return;const sorted=Object.entries(e.pathology_scores).sort((a,b)=>b[1]-a[1]).filter(([,v])=>v>0.001).slice(0,12);const inner=`<p style="font-size:.82rem;color:var(--text-light);margin-bottom:10px">${escHtml(e.pathology_findings||'No significant pathologies detected above threshold.')}</p>${sorted.length?`<table class="path-table"><thead><tr><th>Pathology</th><th>Probability</th><th>Confidence</th></tr></thead><tbody>${sorted.map(([p,s])=>{const pct=(s*100).toFixed(2)+'%';const col=s>=.7?'#ef4444':s>=.5?'#f59e0b':'#10b981';const lbl=s>=.7?'High':s>=.5?'Moderate':'Low';return `<tr><td>${escHtml(p)}</td><td>${pct}</td><td><span class="dot-indicator" style="background:${col}"></span>${lbl}</td></tr>`;}).join('')}</tbody></table>`:'<p style="font-size:.82rem;color:var(--text-light)">All scores below 1% threshold</p>'}`;html+=exp(`Evidence ${i+1} - Pathology Analysis`,true,inner);});
+  }else{html+=`<div class="banner info">ℹ️ No pathology detection data available for this query.</div>`;}
 
-  /* ── 6. FINAL CLINICAL RESPONSE ── */
+  /* 6. Clinical Response */
   html+=`<div class="st-header">Final Clinical Response</div>`;
-  const secs=parseSections(raw);
-  html+=renderClinical(secs,raw);
+  html+=renderClinical(parseSections(raw),raw);
 
-  /* ── 7. EVALUATION METRICS ── */
-  html+=`<div class="st-header"> Evaluation Metrics</div>`;
+  /* 7. Evaluation Metrics */
+  html+=`<div class="st-header">Evaluation Metrics</div>`;
   const hidden=new Set(['GroundednessSimple','EvaluationNote','GroundednessSource']);
   const pref=['Precision@K','Recall@K','MRR','Groundedness','ClinicalCorrectness','Completeness'];
   const vis=pref.filter(k=>k in m&&!hidden.has(k));
-  if(vis.length){
-    html+=`<div class="metric-row-6">`;
-    vis.forEach(k=>{
-      const v=parseFloat(m[k]);
-      const cls=isNaN(v)?'mt-blue':v>=.7?'mt-green':v>=.4?'mt-amber':'mt-red';
-      html+=`<div class="metric-tile-sm"><div class="mt-val ${cls}">${isNaN(v)?'N/A':v.toFixed(3)}</div><div class="mt-key">${k}</div></div>`;
-    });
-    html+=`</div>`;
-  } else {
-    html+=`<div class="banner warn">⚠️ No evaluation metrics available</div>`;
-  }
-
-  // /* ── 8. EXPORT ── */
-  // html+=`<div class="st-header"> Export Results</div>`;
-  // html+=`<div class="export-row">
-  //   <button class="btn-export" onclick="exportTxt()">⬇ Download as Text</button>
-  //   <button class="btn-export" onclick="exportJson()">⬇ Download as JSON</button>
-  // </div>`;
+  if(vis.length){html+=`<div class="metric-row-6">`;vis.forEach(k=>{const v=parseFloat(m[k]);const cls=isNaN(v)?'mt-blue':v>=.7?'mt-green':v>=.4?'mt-amber':'mt-red';html+=`<div class="metric-tile-sm"><div class="mt-val ${cls}">${isNaN(v)?'N/A':v.toFixed(3)}</div><div class="mt-key">${k}</div></div>`;});html+=`</div>`;}
+  else html+=`<div class="banner warn">⚠️ No evaluation metrics available</div>`;
 
   document.getElementById('results-card').innerHTML=html;
-
-  if(hasPath) setTimeout(()=>renderPathChart(pathData),50);
+  if(hasPath)setTimeout(()=>renderPathChart(pathData),50);
 }
+function escHtml(t){return String(t).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');}
+function tile(label,val,hint){return `<div class="metric-tile"><div class="metric-tile-label">${label}</div><div class="metric-tile-val">${val}</div>${hint?`<div style="font-size:.68rem;color:var(--text-light);margin-top:2px">${hint}</div>`:''}</div>`;}
 
-/* ─── HELPERS ─── */
-function escHtml(t){
-  return String(t).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
-}
-
-function tile(label,val,hint){
-  return `<div class="metric-tile">
-    <div class="metric-tile-label">${label}</div>
-    <div class="metric-tile-val">${val}</div>
-    ${hint?`<div style="font-size:.68rem;color:var(--text-light);margin-top:2px">${hint}</div>`:''}
-  </div>`;
-}
-
-// function gateCol(label,score,threshold){
-//   const pass=score>=threshold, marg=!pass&&score>=threshold*.8;
-//   const cls=pass?'gb-pass':marg?'gb-warn':'gb-fail';
-//   const txt=pass?'PASS':marg?'MARGINAL':'FAIL';
-//   const delta=(score-threshold).toFixed(2);
-//   const dCls=parseFloat(delta)>=0?'d-pos':'d-neg';
-//   return `<div class="gate-col">
-//     <div class="gate-col-label">${label}</div>
-//     <div class="gate-col-val">${score.toFixed(2)}</div>
-//     <span class="metric-tile-delta ${dCls}">${parseFloat(delta)>=0?'↑':'↓'} ${delta}</span>
-//     <div class="gate-badge-large ${cls}">${txt}</div>
-//   </div>`;
-// }
-
-function gateCol(label,score,threshold){
-  const pass=score>=threshold, marg=!pass&&score>=threshold*.8;
-  const cls=pass?'gb-pass':marg?'gb-warn':'gb-fail';
-  const txt=pass?'PASS':marg?'MARGINAL':'FAIL';
+/* gateCol — used for BOTH Evidence Quality and Response Quality */
+function gateCol(label, score, threshold){
+  const pass = score >= threshold;
+  const marg = !pass && score >= threshold * 0.8;
+  const cls  = pass ? 'gb-pass' : marg ? 'gb-warn' : 'gb-fail';
+  const txt  = pass ? 'PASS'    : marg ? 'MARGINAL' : 'FAIL';
   return `<div class="gate-col">
     <div class="gate-col-label">${label}</div>
     <div class="gate-col-val">${score.toFixed(2)}</div>
@@ -608,211 +341,21 @@ function gateCol(label,score,threshold){
   </div>`;
 }
 
-function overallCol(label,score){
-  const cls=score>=.7?'gb-pass':score>=.5?'gb-warn':'gb-fail';
-  const lbl=score>=.7?'EXCELLENT':score>=.5?'GOOD':'NEEDS REVIEW';
-  return `<div class="gate-col">
-    <div class="gate-col-label">${label}</div>
-    <div class="gate-col-val">${score.toFixed(2)}</div>
-    <div class="gate-badge-large ${cls}">${lbl}</div>
-  </div>`;
-}
-
 let _expCount=0;
-function exp(title,openByDefault,inner){
-  const id='exp-'+(++_expCount);
-  return `<div class="exp-block${openByDefault?' open':''}" id="${id}">
-    <div class="exp-head" onclick="toggleExp('${id}')">
-      <div class="exp-head-title">▾ ${title}</div>
-      <span class="exp-chevron">▲</span>
-    </div>
-    <div class="exp-body"><div class="exp-content">${inner}</div></div>
-  </div>`;
-}
-
+function exp(title,openByDefault,inner){const id='exp-'+(++_expCount);return `<div class="exp-block${openByDefault?' open':''}" id="${id}"><div class="exp-head" onclick="toggleExp('${id}')"><div class="exp-head-title">▾ ${title}</div><span class="exp-chevron">▲</span></div><div class="exp-body"><div class="exp-content">${inner}</div></div></div>`;}
 function toggleExp(id){document.getElementById(id).classList.toggle('open');}
-
-function parseSections(text){
-  const s={impression:'',evidence:'',differential:'',recommendations:''};
-  let cur=null;
-  for(const line of text.split('\n')){
-    const ll=line.toLowerCase().trim();
-    // Detect section headers
-    if(ll.startsWith('clinical impression')){cur='impression';continue;}
-    if(ll.startsWith('evidence synthesis')){cur='evidence';continue;}
-    if(ll.startsWith('differential consideration')){cur='differential';continue;}
-    if(ll.startsWith('actionable next steps')){cur='recommendations';continue;}
-    // Capture content
-    if(cur && line.trim()) s[cur]+=line+'\n';
-  }
-  return s;
-}
-
+function parseSections(text){const s={impression:'',evidence:'',differential:'',recommendations:''};let cur=null;for(const line of text.split('\n')){const ll=line.toLowerCase().trim();if(ll.startsWith('clinical impression')){cur='impression';continue;}if(ll.startsWith('evidence synthesis')){cur='evidence';continue;}if(ll.startsWith('differential consideration')){cur='differential';continue;}if(ll.startsWith('actionable next steps')){cur='recommendations';continue;}if(cur&&line.trim())s[cur]+=line+'\n';}return s;}
 function renderClinical(secs,raw){
   let html='';
-
-  // ── 1. Clinical Impression ─────────────────────────────────────────────────
-  if(secs.impression){
-    html+=`<div class="cr-section">
-      <div class="cr-heading"> Clinical Impression:</div>
-      <div class="cr-box-blue">`;
-    secs.impression.split('\n').filter(l=>l.trim()).forEach(l=>{
-      const clean = escHtml(l.replace(/^[-•*]\s*/,''));
-      const ll = l.toLowerCase();
-      // Colour-code confidence badge
-      if(ll.includes('high confidence')){
-        html+=`<div class="cr-bullet"><div class="cr-bullet-dot" style="background:#10b981"></div><span style="color:#065f46;font-weight:500">${clean}</span></div>`;
-      } else if(ll.includes('moderate confidence')){
-        html+=`<div class="cr-bullet"><div class="cr-bullet-dot" style="background:#f59e0b"></div><span style="color:#92400e;font-weight:500">${clean}</span></div>`;
-      } else if(ll.includes('low confidence')){
-        html+=`<div class="cr-bullet"><div class="cr-bullet-dot" style="background:#ef4444"></div><span style="color:#991b1b;font-weight:500">${clean}</span></div>`;
-      } else {
-        html+=`<div class="cr-bullet"><div class="cr-bullet-dot dot-blue"></div><span>${clean}</span></div>`;
-      }
-    });
-    html+=`</div></div>`;
-  }
-
-  // ── 2. Evidence Synthesis ──────────────────────────────────────────────────
-  if(secs.evidence){
-    html+=`<div class="cr-section"><div class="cr-heading">Evidence Synthesis:</div>`;
-    secs.evidence.split('\n').filter(l=>l.trim()).forEach(l=>{
-      const clean = escHtml(l.replace(/^[-•*]\s*/,''));
-      if(l.toLowerCase().includes('discordance')){
-        // Highlight discordance notes in amber
-        html+=`<div style="background:#fffbeb;border-left:4px solid #f59e0b;padding:8px 14px;border-radius:0 6px 6px 0;margin:5px 0;font-size:.85rem;">
-          <span style="font-weight:600;color:#92400e">⚠️ ${clean}</span>
-        </div>`;
-      } else {
-        html+=`<div class="cr-bullet"><div class="cr-bullet-dot dot-green"></div><span>${clean}</span></div>`;
-      }
-    });
-    html+=`</div>`;
-  }
-
-  // ── 3. Differential Considerations ────────────────────────────────────────
-  if(secs.differential){
-    html+=`<div class="cr-section"><div class="cr-heading">Differential Considerations:</div>`;
-    secs.differential.split('\n').filter(l=>l.trim()).forEach(l=>{
-      const clean = escHtml(l.replace(/^[-•*]\s*/,''));
-      const ll = l.toLowerCase();
-      if(ll.includes('primary:')){
-        html+=`<div style="background:#ecfdf5;border-left:4px solid #10b981;padding:8px 14px;border-radius:0 6px 6px 0;margin:5px 0;font-size:.85rem;">
-          <span style="color:#065f46"> ${clean}</span>
-        </div>`;
-      } else if(ll.includes('alternative:')){
-        html+=`<div style="background:#f3f4f6;border-left:4px solid #6b7280;padding:8px 14px;border-radius:0 6px 6px 0;margin:5px 0;font-size:.85rem;">
-          <span style="color:#374151"> ${clean}</span>
-        </div>`;
-      } else {
-        html+=`<div class="cr-bullet"><div class="cr-bullet-dot dot-blue"></div><span>${clean}</span></div>`;
-      }
-    });
-    html+=`</div>`;
-  }
-
-  // ── 4. Actionable Next Steps — HIDDEN from display as requested ────────────
-  // secs.recommendations is parsed but intentionally not rendered in the UI.
-  // It is still available in the raw final_answer for exports.
-
-  // ── Fallback if nothing parsed ─────────────────────────────────────────────
-  if(!secs.impression && !secs.evidence && !secs.differential && raw){
-    html+=`<div class="cr-fallback">${escHtml(raw).replace(/\n/g,'<br/>')}</div>`;
-  }
-
-  return html || `<div class="banner warn">No clinical response generated.</div>`;
+  if(secs.impression){html+=`<div class="cr-section"><div class="cr-heading"> Clinical Impression:</div><div class="cr-box-blue">`;secs.impression.split('\n').filter(l=>l.trim()).forEach(l=>{const clean=escHtml(l.replace(/^[-•*]\s*/,''));const ll=l.toLowerCase();if(ll.includes('high confidence')){html+=`<div class="cr-bullet"><div class="cr-bullet-dot" style="background:#10b981"></div><span style="color:#065f46;font-weight:500">${clean}</span></div>`;}else if(ll.includes('moderate confidence')){html+=`<div class="cr-bullet"><div class="cr-bullet-dot" style="background:#f59e0b"></div><span style="color:#92400e;font-weight:500">${clean}</span></div>`;}else if(ll.includes('low confidence')){html+=`<div class="cr-bullet"><div class="cr-bullet-dot" style="background:#ef4444"></div><span style="color:#991b1b;font-weight:500">${clean}</span></div>`;}else{html+=`<div class="cr-bullet"><div class="cr-bullet-dot dot-blue"></div><span>${clean}</span></div>`;}});html+=`</div></div>`;}
+  if(secs.evidence){html+=`<div class="cr-section"><div class="cr-heading">Evidence Synthesis:</div>`;secs.evidence.split('\n').filter(l=>l.trim()).forEach(l=>{const clean=escHtml(l.replace(/^[-•*]\s*/,''));if(l.toLowerCase().includes('discordance')){html+=`<div style="background:#fffbeb;border-left:4px solid #f59e0b;padding:8px 14px;border-radius:0 6px 6px 0;margin:5px 0;font-size:.85rem;"><span style="font-weight:600;color:#92400e">⚠️ ${clean}</span></div>`;}else{html+=`<div class="cr-bullet"><div class="cr-bullet-dot dot-green"></div><span>${clean}</span></div>`;}});html+=`</div>`;}
+  if(secs.differential){html+=`<div class="cr-section"><div class="cr-heading">Differential Considerations:</div>`;secs.differential.split('\n').filter(l=>l.trim()).forEach(l=>{const clean=escHtml(l.replace(/^[-•*]\s*/,''));const ll=l.toLowerCase();if(ll.includes('primary:')){html+=`<div style="background:#ecfdf5;border-left:4px solid #10b981;padding:8px 14px;border-radius:0 6px 6px 0;margin:5px 0;font-size:.85rem;"><span style="color:#065f46"> ${clean}</span></div>`;}else if(ll.includes('alternative:')){html+=`<div style="background:#f3f4f6;border-left:4px solid #6b7280;padding:8px 14px;border-radius:0 6px 6px 0;margin:5px 0;font-size:.85rem;"><span style="color:#374151"> ${clean}</span></div>`;}else{html+=`<div class="cr-bullet"><div class="cr-bullet-dot dot-blue"></div><span>${clean}</span></div>`;}});html+=`</div>`;}
+  if(!secs.impression&&!secs.evidence&&!secs.differential&&raw)html+=`<div class="cr-fallback">${escHtml(raw).replace(/\n/g,'<br/>')}</div>`;
+  return html||`<div class="banner warn">No clinical response generated.</div>`;
 }
-
-function buildPathData(ev){
-  const agg={};
-  ev.forEach(e=>Object.entries(e.pathology_scores||{}).forEach(([p,v])=>{agg[p]=Math.max(agg[p]||0,v);}));
-  return Object.entries(agg).sort((a,b)=>b[1]-a[1]).slice(0,8);
-}
-
-function renderPathChart(data){
-  const ctx=document.getElementById('pathChart');
-  if(!ctx) return;
-  const labels=data.map(([n])=>n);
-  const vals=data.map(([,v])=>+(v*100).toFixed(2));
-  const colors=vals.map(v=>v>=70?'rgba(239,68,68,.8)':v>=40?'rgba(245,158,11,.8)':'rgba(16,185,129,.8)');
-  if(_pathChart) _pathChart.destroy();
-  _pathChart=new Chart(ctx,{
-    type:'bar',
-    data:{labels,datasets:[{label:'Confidence (%)',data:vals,backgroundColor:colors,borderColor:colors.map(c=>c.replace('.8','1')),borderWidth:1,borderRadius:4}]},
-    options:{
-      indexAxis:'y',responsive:true,maintainAspectRatio:false,
-      plugins:{legend:{display:false},tooltip:{callbacks:{label:c=>` ${c.parsed.x.toFixed(2)}%`}}},
-      scales:{
-        x:{grid:{color:'rgba(0,0,0,.05)'},title:{display:true,text:'Confidence (%)'},ticks:{callback:v=>v+'%'}},
-        y:{grid:{display:false},ticks:{font:{size:12}}}
-      }
-    }
-  });
-}
-
-/* ─── EXPORT ─── */
-// function exportTxt(){
-//   if(!_lastData) return;
-//   const d=_lastData, qs=d.quality_scores||{};
-//   const hidden=new Set(['GroundednessSimple','EvaluationNote','GroundednessSource']);
-//   const metLines=Object.entries(d.metrics||{}).filter(([k])=>!hidden.has(k)).map(([k,v])=>`${k}: ${v}`).join('\n');
-//   const txt=`MEDICAL MULTI AGENT AI CLINICAL ANALYSIS REPORT\n${'='.repeat(60)}\nPatient ID : ${currentPatient}\nQuery      : ${currentQuery}\n\nPIPELINE SUMMARY\n${'-'.repeat(60)}\nTotal Iterations   : ${d.total_iterations||0}\nRetrieval Attempts : ${d.retrieval_attempts||0}\nReasoning Attempts : ${d.reasoning_attempts||0}\nRefinement Count   : ${d.refinement_count||0}\nForce-Finalised    : ${d.forced_complete||false}\n\nQUALITY SCORES\n${'-'.repeat(60)}\nEvidence Quality: ${(qs.evidence||0).toFixed(3)}\nResponse Quality: ${(qs.response||0).toFixed(3)}\n\nCLINICAL RESPONSE\n${'-'.repeat(60)}\n${d.final_answer||''}\n\nEVALUATION METRICS\n${'-'.repeat(60)}\n${metLines}\n`;
-//   dl(`medai_${currentPatient}.txt`,txt,'text/plain');
-// }
-
-// function exportJson(){
-//   if(!_lastData) return;
-//   const hidden=new Set(['GroundednessSimple','EvaluationNote','GroundednessSource']);
-//   const out={patient_id:currentPatient,query:currentQuery,
-//     pipeline:{total_iterations:_lastData.total_iterations||0,retrieval_attempts:_lastData.retrieval_attempts||0,reasoning_attempts:_lastData.reasoning_attempts||0,refinement_count:_lastData.refinement_count||0,forced_complete:_lastData.forced_complete||false},
-//     quality_scores:_lastData.quality_scores||{},final_answer:_lastData.final_answer||'',
-//     metrics:Object.fromEntries(Object.entries(_lastData.metrics||{}).filter(([k])=>!hidden.has(k))),
-//     evidence_count:(_lastData.filtered_evidence||[]).length};
-//   dl(`medai_${currentPatient}.json`,JSON.stringify(out,null,2),'application/json');
-// }
-
-// function dl(name,content,mime){
-//   const a=document.createElement('a');
-//   const u=URL.createObjectURL(new Blob([content],{type:mime}));
-//   a.href=u;a.download=name;a.click();URL.revokeObjectURL(u);
-// }
-
-/* ─── DEMO DATA ─── */
-function getDemoData(query,pid){
-  return {
-    total_iterations:3,retrieval_attempts:2,reasoning_attempts:1,refinement_count:0,forced_complete:false,
-    quality_scores:{evidence:0.51,response:0.76},
-    evidence_gate_result:{decision:'PASS',score:0.51},
-    response_gate_result:{decision:'PASS',score:0.76},
-    evidence_filter_result:{quality_score:0.49,removed_count:0,feedback:'Low quality evidence - consider alternative modalities or query reformulation'},
-    consistency_result:{passed:false,issues:['Insufficient citation coverage']},
-    evidence:[{modality:'XRAY'},{modality:'XRAY'}],
-    filtered_evidence:[
-      {modality:'XRAY',organ:'Chest',relevance_score:0.49,has_image:false,image_path:null,
-       report_text:'Indication: Positive TB test Comparison: None. Findings: The cardiac silhouette and mediastinum size are within normal limits. There is no pulmonary edema. There is no focal consolidation. There are no XXXX of a pleural effusion. There is no evidence of pneumothorax. Impression: Normal chest x-XXXX.',
-       pathology_scores:{Deformity:0.0446,Scoliosis:0.0382,Nodule:0.0303,Calcinosis:0.0297,'Pulmonary Atelectasis':0.0289,Hyperdistention:0.0239,Granuloma:0.0188,Cicatrix:0.0158,Infiltrate:0.0136,Pneumonia:0.0136},
-       top_pathologies:[['Deformity',0.0446],['Scoliosis',0.0382]],
-       pathology_findings:'No significant pathologies detected above threshold.'},
-      {modality:'XRAY',organ:'Chest',relevance_score:0.49,has_image:false,image_path:null,
-       report_text:'',
-       pathology_scores:{Granuloma:0.0215,Scoliosis:0.0198,'Calcified Granuloma':0.0163,Nodule:0.0139,Cicatrix:0.0137,Calcinosis:0.0104,Hyperdistention:0.0101},
-       top_pathologies:[['Granuloma',0.0215]],
-       pathology_findings:'No significant pathologies detected above threshold.'},
-    ],
-    final_answer:`Diagnosis / Impression:
-- No sign of pleural effusion detected. [R1-IMAGE], [R2-IMAGE]
-
-Supporting Evidence:
-- The chest x-ray does not show any signs of pleural effusion. [R1-IMAGE]
-- The chest x-ray does not show any signs of pleural effusion. [R2-IMAGE]
-- The absence of pleural effusion signs on chest x-ray is consistent with the provided pathology detection results. [R1], [R2]
-
-Next Steps / Recommendations:
-- Clinical correlation recommended to rule out other potential causes of symptoms. [Rx]
-- Follow-up imaging if symptoms persist, but based on current evidence, pleural effusion is unlikely. [Rx]`,
-    metrics:{'Precision@K':0.800,'Recall@K':1.000,'MRR':1.000,'Groundedness':0.667,'ClinicalCorrectness':0.634,'Completeness':1.000,'GroundednessSource':'ragas'},
-  };
-}
+function buildPathData(ev){const agg={};ev.forEach(e=>Object.entries(e.pathology_scores||{}).forEach(([p,v])=>{agg[p]=Math.max(agg[p]||0,v);}));return Object.entries(agg).sort((a,b)=>b[1]-a[1]).slice(0,8);}
+function renderPathChart(data){const ctx=document.getElementById('pathChart');if(!ctx)return;const labels=data.map(([n])=>n);const vals=data.map(([,v])=>+(v*100).toFixed(2));const colors=vals.map(v=>v>=70?'rgba(239,68,68,.8)':v>=40?'rgba(245,158,11,.8)':'rgba(16,185,129,.8)');if(_pathChart)_pathChart.destroy();_pathChart=new Chart(ctx,{type:'bar',data:{labels,datasets:[{label:'Confidence (%)',data:vals,backgroundColor:colors,borderColor:colors.map(c=>c.replace('.8','1')),borderWidth:1,borderRadius:4}]},options:{indexAxis:'y',responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false},tooltip:{callbacks:{label:c=>` ${c.parsed.x.toFixed(2)}%`}}},scales:{x:{grid:{color:'rgba(0,0,0,.05)'},title:{display:true,text:'Confidence (%)'},ticks:{callback:v=>v+'%'}},y:{grid:{display:false},ticks:{font:{size:12}}}}}});}
+function getDemoData(query,pid){return{total_iterations:3,retrieval_attempts:2,reasoning_attempts:1,refinement_count:0,forced_complete:false,quality_scores:{evidence:0.51,response:0.76},evidence_gate_result:{decision:'PASS',score:0.51},response_gate_result:{decision:'PASS',score:0.76},evidence_filter_result:{quality_score:0.49,removed_count:0,feedback:'Low quality evidence - consider alternative modalities or query reformulation'},consistency_result:{passed:false,issues:['Insufficient citation coverage']},evidence:[{modality:'XRAY'},{modality:'XRAY'}],filtered_evidence:[{modality:'XRAY',organ:'Chest',relevance_score:0.49,has_image:false,image_path:null,report_text:'Indication: Positive TB test. Findings: The cardiac silhouette and mediastinum size are within normal limits. There is no pulmonary edema. There is no focal consolidation. There are no signs of a pleural effusion. There is no evidence of pneumothorax. Impression: Normal chest x-ray.',pathology_scores:{Deformity:0.0446,Scoliosis:0.0382,Nodule:0.0303,Calcinosis:0.0297,'Pulmonary Atelectasis':0.0289,Hyperdistention:0.0239,Granuloma:0.0188,Cicatrix:0.0158,Infiltrate:0.0136,Pneumonia:0.0136},top_pathologies:[['Deformity',0.0446],['Scoliosis',0.0382]],pathology_findings:'No significant pathologies detected above threshold.'},{modality:'XRAY',organ:'Chest',relevance_score:0.49,has_image:false,image_path:null,report_text:'',pathology_scores:{Granuloma:0.0215,Scoliosis:0.0198,'Calcified Granuloma':0.0163,Nodule:0.0139,Cicatrix:0.0137,Calcinosis:0.0104,Hyperdistention:0.0101},top_pathologies:[['Granuloma',0.0215]],pathology_findings:'No significant pathologies detected above threshold.'}],final_answer:`Clinical Impression:\n- No sign of pleural effusion detected. [R1-IMAGE], [R2-IMAGE]\n\nEvidence Synthesis:\n- The chest x-ray does not show any signs of pleural effusion. [R1-IMAGE]\n- The chest x-ray does not show any signs of pleural effusion. [R2-IMAGE]\n- The absence of pleural effusion signs is consistent with the provided pathology detection results. [R1], [R2]\n\nDifferential Considerations:\n- Primary: No pleural effusion present based on current imaging evidence.\n- Alternative: Clinical correlation recommended to rule out early or loculated effusion.`,metrics:{'Precision@K':0.800,'Recall@K':1.000,'MRR':1.000,'Groundedness':0.667,'ClinicalCorrectness':0.634,'Completeness':1.000,'GroundednessSource':'ragas'}};}
 </script>
 </body>
 </html>
