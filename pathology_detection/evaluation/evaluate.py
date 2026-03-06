@@ -318,42 +318,48 @@ class ModelEvaluator:
                 total_fn += fn
                 total_tp += tp
         
-        # Create aggregated confusion matrix
-        overall_cm = np.array([[total_tn, total_fp],
-                              [total_fn, total_tp]])
+        # ── FIXED: TP top-left to match standard convention ──
+        overall_cm = np.array([[total_tp, total_fn],
+                            [total_fp, total_tn]])
         
-        # Create figure
-        plt.figure(figsize=(10, 8))
+        # ── FIXED: use fig, ax = plt.subplots() so ax is defined ──
+        fig, ax = plt.subplots(figsize=(10, 8))
         
-        # Create heatmap
         sns.heatmap(
-            overall_cm, 
-            annot=True, 
-            fmt='d', 
+            overall_cm,
+            annot=True,
+            fmt='d',
             cmap='Blues',
-            xticklabels=['Predicted Negative', 'Predicted Positive'],
-            yticklabels=['True Negative', 'True Positive'],
+            xticklabels=['Predicted Positive', 'Predicted Negative'],
+            yticklabels=['Actual Positive', 'Actual Negative'],
+            ax=ax,
             cbar_kws={'label': 'Count'},
             annot_kws={'size': 16, 'weight': 'bold'}
         )
         
-        plt.title('Overall Confusion Matrix (Aggregated Across All Pathologies)', 
-                 fontsize=16, fontweight='bold', pad=20)
-        plt.ylabel('Actual', fontsize=14, fontweight='bold')
-        plt.xlabel('Predicted', fontsize=14, fontweight='bold')
+        ax.set_title('Overall Confusion Matrix (Aggregated Across All Pathologies)',
+                    fontsize=16, fontweight='bold', pad=20)
+        ax.set_ylabel('Actual', fontsize=14, fontweight='bold')
+        ax.set_xlabel('Predicted', fontsize=14, fontweight='bold')
         
-        # Add accuracy and other metrics as text
-        accuracy = (total_tp + total_tn) / (total_tp + total_tn + total_fp + total_fn)
+        # Metrics
+        accuracy  = (total_tp + total_tn) / (total_tp + total_tn + total_fp + total_fn)
         precision = total_tp / (total_tp + total_fp) if (total_tp + total_fp) > 0 else 0
-        recall = total_tp / (total_tp + total_fn) if (total_tp + total_fn) > 0 else 0
-        f1 = 2 * (precision * recall) / (precision + recall) if (precision + recall) > 0 else 0
+        recall    = total_tp / (total_tp + total_fn) if (total_tp + total_fn) > 0 else 0
+        f1        = 2 * (precision * recall) / (precision + recall) if (precision + recall) > 0 else 0
         
-        metrics_text = f'Accuracy: {accuracy:.3f}\nPrecision: {precision:.3f}\nRecall: {recall:.3f}\nF1-Score: {f1:.3f}'
-        plt.text(2.3, 0.5, metrics_text, fontsize=12, 
-                bbox=dict(boxstyle='round', facecolor='wheat', alpha=0.5),
-                verticalalignment='center')
+        print(f"   Accuracy:  {accuracy:.3f}")
+        print(f"   Precision: {precision:.3f}")
+        print(f"   Recall:    {recall:.3f}")
+        print(f"   F1-Score:  {f1:.3f}")
         
-        plt.tight_layout()
+        # ── FIXED: ax.text() with transform=ax.transAxes ──
+        fig.text(0.5, 0.01,
+                 f'Accuracy: {accuracy:.3f}   Precision: {precision:.3f}   Recall: {recall:.3f}   F1-Score: {f1:.3f}',
+                 ha='center', fontsize=11, style='italic',
+                 bbox=dict(boxstyle='round', facecolor='lightyellow', alpha=0.8))
+        
+        plt.tight_layout(rect=[0, 0.05, 1, 1])  # leave space at bottom for text
         plt.savefig(save_dir / 'overall_confusion_matrix.png', dpi=300, bbox_inches='tight')
         print(f"✅ Saved overall confusion matrix to: {save_dir / 'overall_confusion_matrix.png'}")
         plt.close()
