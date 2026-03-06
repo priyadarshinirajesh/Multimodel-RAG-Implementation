@@ -1,3 +1,4 @@
+<!-- index.html -->
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -282,12 +283,13 @@ function renderResults(d){
     ${gateCol('Response Quality', rScore, rThresh)}
   </div>`;
 
-  /* 3. Stage Breakdown */
+  /* 3. Stage Breakdown 
   html+=`<div class="st-header">Stage-by-Stage Breakdown</div>`;
   const origCnt=(d.evidence||[]).length,filtCnt=ev.length,rmCnt=filterRes.removed_count||0,qSc=filterRes.quality_score||0,gateDec=evidGate.decision||'N/A',feedback=filterRes.feedback||'';
   html+=exp('Stage 1: Evidence Retrieval',true,`<div class="mini-3"><div><div class="mini-stat-label">Original Evidence</div><div class="mini-stat-val">${origCnt}</div></div><div><div class="mini-stat-label">Filtered Evidence</div><div class="mini-stat-val">${filtCnt}</div></div><div><div class="mini-stat-label">Removed</div><div class="mini-stat-val">${rmCnt}</div><span class="mini-stat-delta d-neg">↓ -${rmCnt}</span></div></div><p style="font-size:.83rem;color:var(--text-mid);margin-bottom:4px">Quality Score: <b>${qSc.toFixed(2)}</b></p><p style="font-size:.83rem;color:var(--text-mid);margin-bottom:12px">Gate Decision: <b>${gateDec}</b></p>${feedback?`<div class="banner info">${escHtml(feedback)}</div>`:''}${consistency.passed===false?`<div class="banner warn">⚠️ Consistency issues: ${escHtml((consistency.issues||[]).join(', '))}</div>`:consistency.passed===true?`<div class="banner success">✅ Evidence consistency check passed</div>`:''}`);
   const rSc2=respGate.score||0,rDec=respGate.decision||'N/A';
   html+=exp('Stage 3: Clinical Reasoning',true,`<p style="font-size:.83rem;color:var(--text-mid);margin-bottom:4px">Score: <b>${rSc2.toFixed(2)}</b></p><p style="font-size:.83rem;color:var(--text-mid)">Decision: <b>${rDec}</b></p>`);
+  */
 
   /* 4. Retrieved Evidence */
   html+=`<div class="st-header">Retrieved Evidence</div>`;
@@ -307,20 +309,20 @@ function renderResults(d){
     html+=`<div class="chart-wrap"><canvas id="pathChart"></canvas></div>`;
     html+=`<div class="path-legend"><div class="path-legend-item"><div class="leg-dot" style="background:#ef4444"></div><b>High Confidence</b>&nbsp;(≥70%)</div><div class="path-legend-item"><div class="leg-dot" style="background:#f59e0b"></div><b>Moderate Confidence</b>&nbsp;(40–70%)</div><div class="path-legend-item"><div class="leg-dot" style="background:#10b981"></div><b>Low Confidence</b>&nbsp;(&lt;40%)</div></div>`;
     html+=`<div class="st-subheader">Detailed Findings by Image</div>`;
-    ev.forEach((e,i)=>{if(!e.pathology_scores||!Object.keys(e.pathology_scores).length)return;const sorted=Object.entries(e.pathology_scores).sort((a,b)=>b[1]-a[1]).filter(([,v])=>v>0.001).slice(0,12);const inner=`<p style="font-size:.82rem;color:var(--text-light);margin-bottom:10px">${escHtml(e.pathology_findings||'No significant pathologies detected above threshold.')}</p>${sorted.length?`<table class="path-table"><thead><tr><th>Pathology</th><th>Probability</th><th>Confidence</th></tr></thead><tbody>${sorted.map(([p,s])=>{const pct=(s*100).toFixed(2)+'%';const col=s>=.7?'#ef4444':s>=.5?'#f59e0b':'#10b981';const lbl=s>=.7?'High':s>=.5?'Moderate':'Low';return `<tr><td>${escHtml(p)}</td><td>${pct}</td><td><span class="dot-indicator" style="background:${col}"></span>${lbl}</td></tr>`;}).join('')}</tbody></table>`:'<p style="font-size:.82rem;color:var(--text-light)">All scores below 1% threshold</p>'}`;html+=exp(`Evidence ${i+1} - Pathology Analysis`,true,inner);});
+    ev.forEach((e,i)=>{if(!e.pathology_scores||!Object.keys(e.pathology_scores).length)return;const sorted=Object.entries(e.pathology_scores).sort((a,b)=>b[1]-a[1]).filter(([,v])=>v>0.001).slice(0,7);const inner=`${sorted.length?/*const inner=`<p style="font-size:.82rem;color:var(--text-light);margin-bottom:10px">${escHtml(e.pathology_findings||'No significant pathologies detected above threshold.')}</p>${sorted.length?*/`<table class="path-table"><thead><tr><th>Pathology</th><th>Probability</th><th>Confidence</th></tr></thead><tbody>${sorted.map(([p,s])=>{const pct=(s*100).toFixed(2)+'%';const col=s>=.7?'#ef4444':s>=.5?'#f59e0b':'#10b981';const lbl=s>=.7?'High':s>=.5?'Moderate':'Low';return `<tr><td>${escHtml(p)}</td><td>${pct}</td><td><span class="dot-indicator" style="background:${col}"></span>${lbl}</td></tr>`;}).join('')}</tbody></table>`:'<p style="font-size:.82rem;color:var(--text-light)">All scores below 1% threshold</p>'}`;html+=exp(`Evidence ${i+1} - Pathology Analysis`,true,inner);});
   }else{html+=`<div class="banner info">ℹ️ No pathology detection data available for this query.</div>`;}
 
   /* 6. Clinical Response */
   html+=`<div class="st-header">Final Clinical Response</div>`;
   html+=renderClinical(parseSections(raw),raw);
 
-  /* 7. Evaluation Metrics */
-  html+=`<div class="st-header">Evaluation Metrics</div>`;
-  const hidden=new Set(['GroundednessSimple','EvaluationNote','GroundednessSource']);
-  const pref=['Precision@K','Recall@K','MRR','Groundedness','ClinicalCorrectness','Completeness'];
-  const vis=pref.filter(k=>k in m&&!hidden.has(k));
-  if(vis.length){html+=`<div class="metric-row-6">`;vis.forEach(k=>{const v=parseFloat(m[k]);const cls=isNaN(v)?'mt-blue':v>=.7?'mt-green':v>=.4?'mt-amber':'mt-red';html+=`<div class="metric-tile-sm"><div class="mt-val ${cls}">${isNaN(v)?'N/A':v.toFixed(3)}</div><div class="mt-key">${k}</div></div>`;});html+=`</div>`;}
-  else html+=`<div class="banner warn">⚠️ No evaluation metrics available</div>`;
+  // /* 7. Evaluation Metrics */
+  // html+=`<div class="st-header">Evaluation Metrics</div>`;
+  // const hidden=new Set(['GroundednessSimple','EvaluationNote','GroundednessSource']);
+  // const pref=['Precision@K','Recall@K','MRR','Groundedness','ClinicalCorrectness','Completeness'];
+  // const vis=pref.filter(k=>k in m&&!hidden.has(k));
+  // if(vis.length){html+=`<div class="metric-row-6">`;vis.forEach(k=>{const v=parseFloat(m[k]);const cls=isNaN(v)?'mt-blue':v>=.7?'mt-green':v>=.4?'mt-amber':'mt-red';html+=`<div class="metric-tile-sm"><div class="mt-val ${cls}">${isNaN(v)?'N/A':v.toFixed(3)}</div><div class="mt-key">${k}</div></div>`;});html+=`</div>`;}
+  // else html+=`<div class="banner warn">⚠️ No evaluation metrics available</div>`;
 
   document.getElementById('results-card').innerHTML=html;
   if(hasPath)setTimeout(()=>renderPathChart(pathData),50);
@@ -354,7 +356,7 @@ function renderClinical(secs,raw){
   return html||`<div class="banner warn">No clinical response generated.</div>`;
 }
 function buildPathData(ev){const agg={};ev.forEach(e=>Object.entries(e.pathology_scores||{}).forEach(([p,v])=>{agg[p]=Math.max(agg[p]||0,v);}));return Object.entries(agg).sort((a,b)=>b[1]-a[1]).slice(0,8);}
-function renderPathChart(data){const ctx=document.getElementById('pathChart');if(!ctx)return;const labels=data.map(([n])=>n);const vals=data.map(([,v])=>+(v*100).toFixed(2));const colors=vals.map(v=>v>=70?'rgba(239,68,68,.8)':v>=40?'rgba(245,158,11,.8)':'rgba(16,185,129,.8)');if(_pathChart)_pathChart.destroy();_pathChart=new Chart(ctx,{type:'bar',data:{labels,datasets:[{label:'Confidence (%)',data:vals,backgroundColor:colors,borderColor:colors.map(c=>c.replace('.8','1')),borderWidth:1,borderRadius:4}]},options:{indexAxis:'y',responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false},tooltip:{callbacks:{label:c=>` ${c.parsed.x.toFixed(2)}%`}}},scales:{x:{grid:{color:'rgba(0,0,0,.05)'},title:{display:true,text:'Confidence (%)'},ticks:{callback:v=>v+'%'}},y:{grid:{display:false},ticks:{font:{size:12}}}}}});}
+function renderPathChart(data){const ctx=document.getElementById('pathChart');if(!ctx)return;const labels=data.map(([n])=>n);const vals=data.map(([,v])=>+(v*100).toFixed(2));const colors=vals.map(v=>v>=70?'rgba(239,68,68,.8)':v>=40?'rgba(245,158,11,.8)':'rgba(16,185,129,.8)');if(_pathChart)_pathChart.destroy();_pathChart=new Chart(ctx,{type:'bar',data:{labels,datasets:[{label:'Confidence (%)',data:vals,backgroundColor:colors,borderColor:colors.map(c=>c.replace('.8','1')),borderWidth:1,borderRadius:4}]},options:{indexAxis:'y',responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false},tooltip:{callbacks:{label:c=>` ${c.parsed.x.toFixed(2)}%`}}},scales:{x:{grid:{color:'rgba(0,0,0,.05)'},title:{display:true,text:'Confidence (%)'},ticks:{callback:v=>v+'%'}},y:{grid:{display:false},ticks:{font:{size:12,weight:'bold'},color:'#0f2938'}}}}});}
 function getDemoData(query,pid){return{total_iterations:3,retrieval_attempts:2,reasoning_attempts:1,refinement_count:0,forced_complete:false,quality_scores:{evidence:0.51,response:0.76},evidence_gate_result:{decision:'PASS',score:0.51},response_gate_result:{decision:'PASS',score:0.76},evidence_filter_result:{quality_score:0.49,removed_count:0,feedback:'Low quality evidence - consider alternative modalities or query reformulation'},consistency_result:{passed:false,issues:['Insufficient citation coverage']},evidence:[{modality:'XRAY'},{modality:'XRAY'}],filtered_evidence:[{modality:'XRAY',organ:'Chest',relevance_score:0.49,has_image:false,image_path:null,report_text:'Indication: Positive TB test. Findings: The cardiac silhouette and mediastinum size are within normal limits. There is no pulmonary edema. There is no focal consolidation. There are no signs of a pleural effusion. There is no evidence of pneumothorax. Impression: Normal chest x-ray.',pathology_scores:{Deformity:0.0446,Scoliosis:0.0382,Nodule:0.0303,Calcinosis:0.0297,'Pulmonary Atelectasis':0.0289,Hyperdistention:0.0239,Granuloma:0.0188,Cicatrix:0.0158,Infiltrate:0.0136,Pneumonia:0.0136},top_pathologies:[['Deformity',0.0446],['Scoliosis',0.0382]],pathology_findings:'No significant pathologies detected above threshold.'},{modality:'XRAY',organ:'Chest',relevance_score:0.49,has_image:false,image_path:null,report_text:'',pathology_scores:{Granuloma:0.0215,Scoliosis:0.0198,'Calcified Granuloma':0.0163,Nodule:0.0139,Cicatrix:0.0137,Calcinosis:0.0104,Hyperdistention:0.0101},top_pathologies:[['Granuloma',0.0215]],pathology_findings:'No significant pathologies detected above threshold.'}],final_answer:`Clinical Impression:\n- No sign of pleural effusion detected. [R1-IMAGE], [R2-IMAGE]\n\nEvidence Synthesis:\n- The chest x-ray does not show any signs of pleural effusion. [R1-IMAGE]\n- The chest x-ray does not show any signs of pleural effusion. [R2-IMAGE]\n- The absence of pleural effusion signs is consistent with the provided pathology detection results. [R1], [R2]\n\nDifferential Considerations:\n- Primary: No pleural effusion present based on current imaging evidence.\n- Alternative: Clinical correlation recommended to rule out early or loculated effusion.`,metrics:{'Precision@K':0.800,'Recall@K':1.000,'MRR':1.000,'Groundedness':0.667,'ClinicalCorrectness':0.634,'Completeness':1.000,'GroundednessSource':'ragas'}};}
 </script>
 </body>
