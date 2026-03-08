@@ -108,10 +108,18 @@ def clinical_reasoning_agent(
     # ── Build pathology summary for discordance detection ─────────────────────
     pathology_summary = []
     for idx, e in enumerate(evidence, start=1):
-        top = e.get("top_pathologies", [])
-        if top:
-            items = ", ".join([f"{p}: {s*100:.1f}%" for p, s in top])
-            pathology_summary.append(f"[R{idx}] CNN detected: {items}")
+        raw_scores = e.get("pathology_scores", {})
+        if raw_scores:
+            # Apply 40% threshold directly here from raw scores
+            above_threshold = [
+                (p, s) for p, s in raw_scores.items() if s >= 0.40
+            ]
+            above_threshold.sort(key=lambda x: x[1], reverse=True)
+            if above_threshold:
+                items = ", ".join([f"{p}: {s*100:.1f}%" for p, s in above_threshold])
+                pathology_summary.append(f"[R{idx}] CNN detected above 40% threshold: {items}")
+            else:
+                pathology_summary.append(f"[R{idx}] CNN: No pathologies detected above 40% confidence threshold.")
 
     system_prompt = (
         "You are a senior clinical decision-support AI assisting medical professionals. "
