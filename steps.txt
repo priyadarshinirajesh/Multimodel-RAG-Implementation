@@ -4,9 +4,9 @@
 4. python -m ingestion.ingest_to_qdrant
 5.python -m tests.test_qdrant_basic
 6. python -m tests.test_patient_retrieval
-7. python streamlit run streamlit_app.py
+7. uvicorn api:app --host 0.0.0.0 --port 8000 --reload
 
-also create a .env file in agents/ folder to store GROQ_API_KEY (go to groqcloud and generate your api key)
+also create a .env file in the main folder to store GROQ_API_KEY (go to groqcloud and generate your api key)
 after creating the .env file 
 add the following line to the .env file
 
