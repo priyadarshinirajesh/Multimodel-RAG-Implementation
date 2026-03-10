@@ -157,6 +157,8 @@ EVIDENCE HIERARCHY (FOLLOW STRICTLY):
 - TEXT REPORTS [R1], [R2]  →  PRIMARY source. Base Clinical Impression primarily on these.
 - IMAGE INSIGHTS [R1-IMAGE] →  SECONDARY source. Use to support text, NEVER replace it.
 - CNN PATHOLOGY SCORES      →  SUPPLEMENTARY. Cross-check against text reports.
+WARNING: CNN scores >= 40% CANNOT be silently ignored. They MUST appear in 
+  Evidence Synthesis as either a confirmed finding or a Discordance Note.
 
 If a finding is supported ONLY by image/CNN with NO text report backing:
 → Begin that sentence with: "Based on imaging only (limited confidence):"
@@ -165,7 +167,7 @@ If text report AND CNN findings CONTRADICT each other:
 → You MUST write a "Discordance Note:" bullet in Evidence Synthesis.
 
 ========================================
-DISCORDANCE DETECTION RULE:
+DISCORDANCE DETECTION RULE (MANDATORY IF NECESSARY):
 ========================================
 Compare the CNN pathology results above against the text reports in the evidence below.
 - If CNN detected a pathology above 40% confidence BUT text report does NOT mention it → flag it.
