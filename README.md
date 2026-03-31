@@ -284,6 +284,11 @@ Quality thresholds and retry limits can be adjusted in the Streamlit sidebar or 
 
 ---
 
+## Demo Video
+
+https://github.com/priyadarshinirajesh/Multimodel-RAG-Implementation/assets/demo.mp4
+---
+
 ## License
 
 This project was developed as a final-year B.Tech project at Amrita Vishwa Vidyapeetham. All rights reserved by the authors. Not intended for clinical deployment without appropriate regulatory clearance.
