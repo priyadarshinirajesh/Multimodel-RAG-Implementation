@@ -242,6 +242,86 @@ class ModelEvaluator:
         plt.close()
         
         return roc_auc_micro, roc_auc_macro
+
+    def plot_multilabel_confusion_matrix(self, predictions, labels, save_dir, threshold=0.5):
+        """
+        Plot 37x37 multi-label confusion matrix showing
+        co-occurrence of predicted vs actual pathologies.
+        """
+        import seaborn as sns
+        
+        save_dir = Path(save_dir)
+        save_dir.mkdir(parents=True, exist_ok=True)
+        
+        print("   Creating 37x37 multi-label confusion matrix...")
+        
+        binary_preds = (predictions >= threshold).astype(int)
+        n_classes = len(self.cfg.PATHOLOGY_CLASSES)
+        
+        # Build co-occurrence matrix:
+        # cm[i][j] = number of samples where actual class i AND predicted class j
+        cm = np.zeros((n_classes, n_classes), dtype=int)
+        
+        for sample_idx in range(len(labels)):
+            actual_classes    = np.where(labels[sample_idx] == 1)[0]
+            predicted_classes = np.where(binary_preds[sample_idx] == 1)[0]
+            for a in actual_classes:
+                for p in predicted_classes:
+                    cm[a][p] += 1
+        
+        # Short labels to keep the chart readable
+        short_labels = [p[:12] for p in self.cfg.PATHOLOGY_CLASSES]
+        
+        fig, ax = plt.subplots(figsize=(26, 22))
+        
+        sns.heatmap(
+            cm,
+            annot=True,
+            fmt='d',
+            cmap='Blues',
+            xticklabels=short_labels,
+            yticklabels=short_labels,
+            ax=ax,
+            linewidths=0.3,
+            linecolor='#e0e0e0',
+            cbar_kws={'label': 'Sample Count', 'shrink': 0.6},
+            annot_kws={'size': 6}
+        )
+        
+        ax.set_title(
+            f'Multi-Label Confusion Matrix — {n_classes} Pathologies\n'
+            f'(Rows = Actual, Columns = Predicted, threshold={threshold})',
+            fontsize=14, fontweight='bold', pad=20
+        )
+        ax.set_ylabel('Actual Pathology', fontsize=12, fontweight='bold')
+        ax.set_xlabel('Predicted Pathology', fontsize=12, fontweight='bold')
+        
+        # Highlight diagonal (correct predictions) with a box
+        for i in range(n_classes):
+            ax.add_patch(plt.Rectangle(
+                (i, i), 1, 1,
+                fill=False, edgecolor='red', lw=1.5
+            ))
+        
+        plt.xticks(rotation=45, ha='right', fontsize=7)
+        plt.yticks(rotation=0, fontsize=7)
+        plt.tight_layout()
+        
+        output_path = save_dir / 'multilabel_confusion_matrix_37x37.png'
+        plt.savefig(output_path, dpi=300, bbox_inches='tight')
+        print(f"✅ Saved 37x37 confusion matrix to: {output_path}")
+        plt.close()
+        
+        # Also save as CSV for reference
+        cm_df = pd.DataFrame(
+            cm,
+            index=self.cfg.PATHOLOGY_CLASSES,
+            columns=self.cfg.PATHOLOGY_CLASSES
+        )
+        cm_df.to_csv(save_dir / 'multilabel_confusion_matrix.csv')
+        print(f"✅ Saved confusion matrix CSV to: {save_dir / 'multilabel_confusion_matrix.csv'}")
+        
+        return cm
     
     def plot_combined_roc_curve(self, predictions, labels, save_dir):
         """
@@ -482,7 +562,11 @@ class ModelEvaluator:
         micro_auc, macro_auc = self.plot_single_aggregated_roc_curve(predictions, labels, output_dir)
         
         # Overall confusion matrix
+        # Overall 2x2 aggregated confusion matrix
         self.plot_overall_confusion_matrix(predictions, labels, output_dir)
+
+        # 37x37 multi-label confusion matrix
+        self.plot_multilabel_confusion_matrix(predictions, labels, output_dir)
         
         # Top pathologies bar chart
         self.plot_top_pathologies_comparison(predictions, labels, output_dir, top_n=15)
