@@ -286,7 +286,7 @@ Quality thresholds and retry limits can be adjusted in the Streamlit sidebar or 
 
 ## Demo Video
 
-https://github.com/priyadarshinirajesh/Multimodel-RAG-Implementation/assets/demo.mp4
+https://github.com/priyadarshinirajesh/Multimodel-RAG-Implementation/assets/Group-22-DemoVideo.mp4
 ---
 
 ## License
