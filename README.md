@@ -284,11 +284,6 @@ Quality thresholds and retry limits can be adjusted in the Streamlit sidebar or 
 
 ---
 
-## Demo Video
-
-▶️ ![Click here to watch the demo](assets/Group-22-DemoVideo.mp4)
-
----
 
 ## License
 
