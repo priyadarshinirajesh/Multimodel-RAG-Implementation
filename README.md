@@ -28,35 +28,7 @@ Unlike conventional linear RAG pipelines, this framework models the diagnostic p
 
 The pipeline is orchestrated using **LangGraph** as a directed cyclic graph with persistent shared state. The core stages are:
 
-```
-User Input (Patient ID + Clinical Query)
-        │
-        ▼
-[1] Query Embedding        → CLIP ViT-B/32 (512-dim text embedding)
-        │
-        ▼
-[2] Multimodal Retrieval   → Qdrant Vector DB (text + image ANN search)
-        │
-        ▼
-[3] Evidence Quality Gate  → Cosine similarity filter + RETRY loop
-        │
-        ▼
-[4] Parallel Analysis
-    ├── Pathology Detection Agent  → DenseNet-121 (37 pathology classes)
-    └── Image Insight Agent        → LLaVA-Med (anatomical description)
-        │
-        ▼
-[5] Clinical Reasoning Agent → Llama-3.1-8B-Instant via Groq
-        │
-        ▼
-[6] Response Quality Gate  → Groundedness / Completeness / Correctness
-        │
-        ▼
-[7] Response Refinement    → Self-correction loop (if quality threshold not met)
-        │
-        ▼
-Final Clinical Response (grounded citations + safety hedging)
-```
+![Architecture Diagram](assets/architecture.png)
 
 ---
 
