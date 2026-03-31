@@ -286,7 +286,12 @@ Quality thresholds and retry limits can be adjusted in the Streamlit sidebar or 
 
 ## Demo Video
 
-https://github.com/priyadarshinirajesh/Multimodel-RAG-Implementation/assets/Group-22-DemoVideo.mp4
+<p align="center">
+  <video src="assets/Group-22-DemoVideo.mp4" controls width="700"></video>
+</p>
+
+<p align="center"><i>Demo of the Multi-Agent Multimodal RAG system</i></p>
+
 ---
 
 ## License
