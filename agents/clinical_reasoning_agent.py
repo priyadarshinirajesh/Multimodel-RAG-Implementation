@@ -24,7 +24,8 @@ if not GROQ_API_KEY:
     raise RuntimeError("❌ GROQ_API_KEY not found")
 
 GROQ_URL   = "https://api.groq.com/openai/v1/chat/completions"
-MODEL_NAME = "llama-3.1-8b-instant"
+# MODEL_NAME = "llama-3.1-8b-instant"
+MODEL_NAME = "openai/gpt-oss-120b"
 
 logger = get_logger("ReasoningAgent")
 
@@ -260,6 +261,11 @@ NOW RESPOND IN THE EXACT FORMAT ABOVE. DO NOT ADD ANY OTHER SECTIONS.
     }
 
     response = requests.post(GROQ_URL, headers=headers, json=payload)
+    print("========== GROQ RESPONSE ==========")
+    print("Status code:", response.status_code)
+    print("Response:", response.text)
+    print("===================================")
+    
     response.raise_for_status()
 
     raw_answer   = response.json()["choices"][0]["message"]["content"]
